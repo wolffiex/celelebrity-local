@@ -1,11 +1,39 @@
 import React, { useState } from 'react';
-import {useValue} from "@repeaterjs/react-hooks";
+//import {useValue} from "@repeaterjs/react-hooks";
+import Buzz from "./buzz.js";
 
-function App() {
+const GAME = Buzz.record("Game", {
+    "name":"string", 
+    "state": ["Created", "Started", "Ended"]});
+
+const PLAYER = Buzz.record("Player", {
+    "name":"string",
+    "client": "id"});
+
+function App(props) {
+    const [player, setPlayer] = useState(null);
+    const buzz = props.buzz;
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-    //const value = useValue(Buzz.);
+    //const gamePlayers = buzz.index(GAME, PLAYER); 
+
+    const playerName = useState(null);
+
+    if (!player) {
+        function submitPlayer(e) {
+            console.log(e)
+            e.preventDefault();
+            const name = e.target.player.value;
+            console.log('name', name    )
+            setPlayer(buzz.write(PLAYER, {name}));
+        }
+        return <form onSubmit={submitPlayer}>
+            <label htmlFor="player">Player: </label>
+            <input name="player" />
+            <input type="submit" />
+        </form>
+    }
 
     function onChange(e){
         e.preventDefault();
@@ -14,25 +42,22 @@ function App() {
             setCreating(true);
         }
     }
-    let createGameForm = null;
 
     function addGame(e) {
-        console.log('add', e.target.gameName.value)
-        e.target.value= "keyy";
+        buzz.write(GAME, {
+            state: GAME.enum.state.Created,
+            name: e.target.gameName.value});
     }
 
-    if (isCreating) {
-        createGameForm = (
-            <form onSubmit={addGame}>
-                <label htmlFor="gameName">Game name</label>
-                <input name="gameName" autoFocus={true}/>
-                <input type="submit" value="Add" />
-            </form>
-        );
-    }
+    const createGameForm = !isCreating ? null :
+        <form onSubmit={addGame}>
+            <label htmlFor="gameName">Game name</label>
+            <input name="gameName" autoFocus={true}/>
+            <input type="submit" value="Add" />
+        </form>;
     return (
         <div className="gameChoice">
-            <h1>Enter Game</h1>
+            <h1>{playerName} enter Game</h1>
             <form>
                 <select name="games" disabled={isCreating} value={selected}
                         onChange={onChange} size="5">
