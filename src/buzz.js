@@ -28,10 +28,15 @@ function instance() {
     function index(r1, r2) {
     }
 
-    async function reader(k) {
-        return read([key,k]);
+    async function* query(k) {
+        let r = "foo";
+        for (var i=0; i< 8; i++) {
+            yield r;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            r = r + '1';
+        }
     }
-    return {write, index, reader, getId};
+    return {write, index, query, getId};
 }
 
 function key(hash) {
@@ -39,10 +44,6 @@ function key(hash) {
 }
 
 function write(keys, doc) {
-}
-
-async function* read(index) {
-    
 }
 
 const Buzz = {instance, record, key};

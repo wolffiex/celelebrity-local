@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 //import {useValue} from "@repeaterjs/react-hooks";
 import Buzz from "./buzz.js";
 
@@ -11,16 +11,31 @@ const PLAYER = Buzz.record("Player", {
     "client": "id"});
 
 function App(props) {
-    const [player, setPlayer] = useState(null);
+    const [playerID, setPlayer] = useState(null);
     const buzz = props.buzz;
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
     //const gamePlayers = buzz.index(GAME, PLAYER); 
 
-    const playerName = useState(null);
+    const [playerName, setPlayerName] = useState(null);
+    let tryMe = "";
+    useEffect(() => {
+        const pid = playerID;
+        console.log('din this', pid)
+        async function f() {
+            if (!playerID) return;
+            for await (let value of buzz.query(playerID)) {
+                setPlayerName(value);
+            }
+        }
+        f();
+        return function cleanup() {
+            console.log('should cleanup', pid)
+        }
+    }, [playerID]);
 
-    if (!player) {
+    if (!playerID) {
         function submitPlayer(e) {
             console.log(e)
             e.preventDefault();
