@@ -2,53 +2,38 @@ import React, { useEffect, useState } from 'react';
 //import {useValue} from "@repeaterjs/react-hooks";
 import Buzz from "./buzz.js";
 
-const GAME = Buzz.record("Game", {
-    "name":"string", 
-    "state": ["Created", "Started", "Ended"]});
+// partial schema ok. schema type errors are expected and are handled with rollback
+const GAME = {
+    "state": ["Created", "Started", "Ended"],
+    "name":"string"}; 
 
-const PLAYER = Buzz.record("Player", {
-    "name":"string",
-    "client": "id"});
+const PLAYER = {"name":"string"};
 
 function App(props) {
-    const [playerID, setPlayer] = useState(null);
     const buzz = props.buzz;
+    function InputForm(props) {
+        let name = Buzz.key();
+        function onSubmit(e) {
+            console.log(e, e.target, name)
+            e.preventDefault();
+            props.onSubmit(e.target[name].value);
+            console.log(e.target[name].value);
+        }
+        return <form onSubmit={onSubmit}>
+            <label htmlFor={name}>{props.label}</label>
+            <input name={name} />
+            <input type="submit" />
+        </form>
+    };
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-    //const gamePlayers = buzz.index(GAME, PLAYER); 
 
-    const [playerName, setPlayerName] = useState(null);
-    let tryMe = "";
-    useEffect(() => {
-        const pid = playerID;
-        console.log('din this', pid)
-        async function f() {
-            if (!playerID) return;
-            for await (let value of buzz.query(playerID)) {
-                setPlayerName(value);
-            }
-        }
-        f();
-        return function cleanup() {
-            console.log('should cleanup', pid)
-        }
-    }, [playerID]);
-
-    if (!playerID) {
-        function submitPlayer(e) {
-            console.log(e)
-            e.preventDefault();
-            const name = e.target.player.value;
-            console.log('name', name    )
-            setPlayer(buzz.write(PLAYER, {name}));
-        }
-        return <form onSubmit={submitPlayer}>
-            <label htmlFor="player">Player: </label>
-            <input name="player" />
-            <input type="submit" />
-        </form>
+    console.log('uk', props.player)
+    if (!props.player) {
+        return <InputForm label="Player: " onSubmit={s => buzz.write(PLAYER.name, s)} />;
     }
+
 
     function onChange(e){
         e.preventDefault();
@@ -65,23 +50,30 @@ function App(props) {
     }
 
     const createGameForm = !isCreating ? null :
+        //refactor thijs with submitPlayer
         <form onSubmit={addGame}>
             <label htmlFor="gameName">Game name</label>
             <input name="gameName" autoFocus={true}/>
             <input type="submit" value="Add" />
         </form>;
+
+    const selectGameForm = 
+        <form>
+            <select name="games" disabled={isCreating} value={selected}
+                    onChange={onChange} size="5">
+                <option value="keyy">Game onee</option>
+                <option value="kyey">Game two</option>
+                <option value="kyey">Game two</option>
+                <option value={NEW_GAME_VALUE}>Create new game</option>
+            </select>
+        </form>;
+
+    //const gamePlayers = game.players
+
     return (
         <div className="gameChoice">
-            <h1>{playerName} enter Game</h1>
-            <form>
-                <select name="games" disabled={isCreating} value={selected}
-                        onChange={onChange} size="5">
-                    <option value="keyy">Game onee</option>
-                    <option value="kyey">Game two</option>
-                    <option value="kyey">Game two</option>
-                    <option value={NEW_GAME_VALUE}>Create new game</option>
-                </select>
-            </form>
+            <h1>{props.player.name} enter Game</h1>
+            {selectGameForm}
             {createGameForm}
         </div>
     );
