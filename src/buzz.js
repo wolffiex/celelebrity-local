@@ -5,38 +5,36 @@ function newKey() {
     return btoa(Math.random());
 }
 
-function record(schema) {
-    function index(otherRecord) {
-    }
-    return {index};
-}
-
-function _write(instanceKey, record, id, values) {
-    return id;
-}
-
 function instance() {
     let instanceKey = newKey();
 
-    function write(record, _key, values) {
-        const key = _key
-        if (values == null) {
-        } else {
-            for (const [key, value] of Object.entries(values)) {
-              console.log(`${key}: ${value}`);
-            }
-        }
+    function create(values) {
+        const key = newKey();
+        if (values) update(key, values);
         return query(key);
     }
 
-    function query(key, assoc) {
-
+    let log = [];
+    function update(result, values) {
+        console.log('upd', result, values)
+        log.push({id: result.get('id'), values});
+        console.log('now', log)
     }
 
-    return {write, query, get id() {
+    // The fact that you had this key before I told you about it is what is
+    // meaningful, not so much the clock time
+    function query(key) {
+        return log.filter(({id}) => key == id).reduce(function({values}, result) {
+            for (const [key, value] of Object.entries(values)) {
+              result[key] = value;
+            }
+            return result;
+        }, {'id': key});
+    }
+
+    return {create, update, query, get id() {
         return instanceKey;
     }};
-
 }
 
 function key(hash) {
@@ -44,5 +42,5 @@ function key(hash) {
 }
 
 
-const Buzz = {instance, record, key};
+const Buzz = {instance, key};
 export default Buzz;

@@ -9,9 +9,9 @@ import Buzz from './buzz.js';
 //const masterKey = params.get('id');
 //if (!masterKey) throw new Error("Missing id.");
 //const key = "password"
-const PLAYER = {"name":"string"};
 const buzz = Buzz.instance();
-const player = buzz.write(PLAYER);
+const player = buzz.create();
+console.log('ind', player)
 
 ReactDOM.render(
   <React.StrictMode>

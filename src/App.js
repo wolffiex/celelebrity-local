@@ -1,39 +1,18 @@
+import InputForm from './inputform.js';
 import React, { useEffect, useState } from 'react';
 //import {useValue} from "@repeaterjs/react-hooks";
 import Buzz from "./buzz.js";
 
-// partial schema ok. schema type errors are expected and are handled with rollback
-const GAME = {
-    "state": ["Created", "Started", "Ended"],
-    "name":"string"}; 
-
-const PLAYER = {"name":"string"};
-
 function App(props) {
     const buzz = props.buzz;
-    function InputForm(props) {
-        let name = Buzz.key();
-        function onSubmit(e) {
-            console.log(e, e.target, name)
-            e.preventDefault();
-            props.onSubmit(e.target[name].value);
-            console.log(e.target[name].value);
-        }
-        return <form onSubmit={onSubmit}>
-            <label htmlFor={name}>{props.label}</label>
-            <input name={name} />
-            <input type="submit" />
-        </form>
-    };
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
 
     console.log('uk', props.player)
-    if (!props.player) {
-        return <InputForm label="Player: " onSubmit={s => buzz.write(PLAYER.name, s)} />;
+    if (!props.player.name) {
+        return <InputForm label="Player: " onSubmit={props.player.name = s} />;
     }
-
 
     function onChange(e){
         e.preventDefault();
@@ -44,8 +23,8 @@ function App(props) {
     }
 
     function addGame(e) {
-        buzz.write(GAME, {
-            state: GAME.enum.state.Created,
+        buzz.create({
+            state: "Created",
             name: e.target.gameName.value});
     }
 
@@ -67,8 +46,6 @@ function App(props) {
                 <option value={NEW_GAME_VALUE}>Create new game</option>
             </select>
         </form>;
-
-    //const gamePlayers = game.players
 
     return (
         <div className="gameChoice">
