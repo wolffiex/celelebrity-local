@@ -11,7 +11,7 @@ function App(props) {
 
     console.log('uk', props.player)
     if (!props.player.name) {
-        return <InputForm label="Player: " onSubmit={props.player.name = s} />;
+        return <InputForm label="Player: " onSubmit={s => props.player.name = s} />;
     }
 
     function onChange(e){

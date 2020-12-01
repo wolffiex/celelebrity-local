@@ -1,8 +1,20 @@
 import { v4 as uuidv4 } from 'uuid';
+//const { List, Set } = require('immutable')
 
 
 function newKey() {
     return btoa(Math.random());
+}
+
+function createResult(log, schema) {
+    let result = {};
+    for (const [key, value] of Object.entries(schema)) {
+        let bValue = null;
+        Object.defineProperty(result, key, {
+            get() { return bValue; },
+            set(newValue) { bValue = newValue; },
+        });
+    }
 }
 
 function instance() {
