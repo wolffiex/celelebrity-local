@@ -1,12 +1,10 @@
 import InputForm from './inputform.js';
-import React, { useEffect, useState } from 'react';
-//import {useValue} from "@repeaterjs/react-hooks";
+import { useState } from 'react';
 import Buzz from "./buzz.js";
 
-const states = ["Ready", "Choose", "Play"];
 function App(props) {
     const useBuzz = props.buzz.useBuzz;
-    const [player, setPlayer] = useBuzz({name: "", ready: false, currentGame: Buzz.last});
+    const [player, setPlayer] = useBuzz({name: "", currentGame: Buzz.last});
     const [game, setGame] = useBuzz({name: "", state: ["Created","Started", "Ended"], 
         players: Buzz.all(player)});
 
