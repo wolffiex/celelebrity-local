@@ -7,21 +7,46 @@ function newKey() {
 
 function node() {
     const nodeKey = newKey();
-    //let sequence = 0;
 
-    function useBuzz(schema) {
+    function getResult(id, meta, values) {
+        const schema = meta.schema;
+        const lastResult = meta.result;
+        let result = {
+            get id() {
+                return id;
+            }
+        };
+
+        for (const [propName, propDefinition] of Object.entries(meta.schema)) {
+            if (propDefinition instanceof _BuzzIndex) {
+                console.log('dunno how to handle', propDefinition)
+            } else {
+                const value = propName in values ? values[propName] : propDefinition;
+                Object.defineProperty(result, propName, {enumerable: true, value});
+            }
+        }
+
+        return {schema, result};
+    }
+
+    function addAssoc(fromId, toId) {
+    }
+
+    function useBuzz(schema, assoc) {
         let id = null;
 
-        let [result, setter] = useState(null);
+        let [meta, setter] = useState({schema, result:null});
 
         function selectResult(values) {
             id = newKey();
-            //const updated = ++sequence;
-            let newResult = Object.assign({id}, result || schema);
-            setter(Object.freeze(Object.assign(newResult, values)));
+            setter(getResult(id, meta, values));
         }
 
-        return [result, selectResult];
+        if (assoc != null) {
+            addAssoc(assoc, id);
+        }
+
+        return [meta.result, selectResult];
     }
 
     return {useBuzz, toString: () => 'Buzz node ' + nodeKey};
@@ -32,11 +57,19 @@ function key(hash) {
 }
 
 const allSymbol = Symbol();
+
 function all(node) {
-    return Object.freeze({symbol: allSymbol, node});
+    return new _BuzzIndex(_BuzzIndex.all, {node});
 }
 
-const last = Object.freeze({symbol: Symbol()});
+function last() {
+    return new _BuzzIndex(_BuzzIndex.last, node);
+}
+
+const _BuzzIndexEnum= {all: Symbol(), last: Symbol()};
+function _BuzzIndex(...args) {
+    this.info = [...args];
+}
 
 const Buzz = {node, key, all, last};
 export default Buzz;

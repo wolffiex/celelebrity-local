@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import Buzz from "./buzz.js";
 import InputForm from './inputform.js';
 
 function ChooseGame(props) {
+    const useBuzz = props.useBuzz;
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
+    const games = useBuzz({list: Buzz.all()}, "CELEBRITY");
+    console.log('games', games.list)
 
     function addGame(e) {
         console.log('hadd', e)
