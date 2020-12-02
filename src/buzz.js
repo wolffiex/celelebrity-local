@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-//const { List, Set } = require('immutable')
-
+import { useEffect, useState } from 'react';
 
 function newKey() {
     return btoa(Math.random());
@@ -17,42 +16,34 @@ function createResult(log, schema) {
     }
 }
 
-function instance() {
-    let instanceKey = newKey();
+function node() {
+    let nodeKey = newKey();
+    let sequence = 0;
 
-    function create(values) {
-        const key = newKey();
-        if (values) update(key, values);
-        return query(key);
+    function useBuzz(schema) {
+        let key = null;
+
+        let [result, setter] = useState(null);
+
+        function selectResult(values) {
+            let newResult = Object.assign({}, result || schema);
+            setter(Object.freeze(Object.assign(newResult, values)));
+        }
+
+        return [result, selectResult];
     }
 
-    let log = [];
-    function update(result, values) {
-        console.log('upd', result, values)
-        log.push({id: result.get('id'), values});
-        console.log('now', log)
-    }
-
-    // The fact that you had this key before I told you about it is what is
-    // meaningful, not so much the clock time
-    function query(key) {
-        return log.filter(({id}) => key == id).reduce(function({values}, result) {
-            for (const [key, value] of Object.entries(values)) {
-              result[key] = value;
-            }
-            return result;
-        }, {'id': key});
-    }
-
-    return {create, update, query, get id() {
-        return instanceKey;
-    }};
+    return {useBuzz};
 }
 
 function key(hash) {
     return uuidv4();
 }
 
+function all(node) {
+    return {node};
+}
 
-const Buzz = {instance, key};
+
+const Buzz = {node, key, all};
 export default Buzz;

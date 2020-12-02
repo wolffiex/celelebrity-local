@@ -3,16 +3,40 @@ import React, { useEffect, useState } from 'react';
 //import {useValue} from "@repeaterjs/react-hooks";
 import Buzz from "./buzz.js";
 
+const states = ["Ready", "Choose", "Play"];
 function App(props) {
-    const buzz = props.buzz;
+    const useBuzz = props.buzz.useBuzz;
+    const [player, setPlayer] = useBuzz({name: "", ready: false, currentGame: Buzz.last});
+    const [game, setGame] = useBuzz({name: "", state: ["Created","Started", "Ended"], 
+        players: Buzz.all(player)});
+
+    if (player === null) {
+        return <InputForm label="Player: "
+            onSubmit={name => setPlayer({name, ready: true} )} />;
+    }
+    
+    if (game === null) {
+        return <ChooseGame setGame={setGame} player={player} />
+    }
+
+    return <GamePlay game={game} player={player}/>
+}
+
+function ChooseGame(props) {
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-
-    console.log('uk', props.player)
-    if (!props.player.name) {
-        return <InputForm label="Player: " onSubmit={s => props.player.name = s} />;
+    function addGame(e) {
+        console.log('had', e)
     }
+
+    const createGameForm = !isCreating ? null :
+        //refactor this with submitPlayer
+        <form onSubmit={addGame}>
+            <label htmlFor="gameName">Game name</label>
+            <input name="gameName" autoFocus={true}/>
+            <input type="submit" value="Add" />
+        </form>;
 
     function onChange(e){
         e.preventDefault();
@@ -21,20 +45,6 @@ function App(props) {
             setCreating(true);
         }
     }
-
-    function addGame(e) {
-        buzz.create({
-            state: "Created",
-            name: e.target.gameName.value});
-    }
-
-    const createGameForm = !isCreating ? null :
-        //refactor thijs with submitPlayer
-        <form onSubmit={addGame}>
-            <label htmlFor="gameName">Game name</label>
-            <input name="gameName" autoFocus={true}/>
-            <input type="submit" value="Add" />
-        </form>;
 
     const selectGameForm = 
         <form>
@@ -54,6 +64,10 @@ function App(props) {
             {createGameForm}
         </div>
     );
+}
+
+function GamePlay(props) {
+    return <h2>This is game</h2>;
 }
 
 export default App;

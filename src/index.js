@@ -9,13 +9,11 @@ import Buzz from './buzz.js';
 //const masterKey = params.get('id');
 //if (!masterKey) throw new Error("Missing id.");
 //const key = "password"
-const buzz = Buzz.instance();
-const player = buzz.create();
-console.log('ind', player)
+const buzz = Buzz.node();
 
 ReactDOM.render(
   <React.StrictMode>
-    <App buzz={buzz} player={player}/>
+    <App buzz={buzz} />
   </React.StrictMode>,
   document.getElementById('root')
 );
