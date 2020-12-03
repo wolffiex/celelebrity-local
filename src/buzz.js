@@ -6,11 +6,10 @@ function newKey() {
 }
 
 function getIndexedProp(id, propDefinition) {
-    const [type, ...args] = propDefinition.info;
-    switch (type) {
+    switch (propDefinition.type) {
         case _BuzzIndex.all:
             return function() {
-                console.log('dunno how to handle all()', args[0]);
+                console.log('dunno how to handle all()', propDefinition.data);
                 return [];
             }
         case _BuzzIndex.last:
@@ -83,9 +82,9 @@ function last() {
     return new _BuzzIndex(_BuzzIndex.last);
 }
 
-function _BuzzIndex(...args) {
-    console.log('args', args)
-    this.info = [...args];
+function _BuzzIndex(type, ...data) {
+    this.type = type;
+    this.data = data;
 }
 _BuzzIndex.last = Symbol();
 _BuzzIndex.all = Symbol();
