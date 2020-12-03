@@ -4,8 +4,8 @@ import ChooseGame from "./ChooseGame.js";
 
 function App(props) {
     const useBuzz = props.buzz.useBuzz;
-    const [player, setPlayer, Player] = useBuzz({name: "", currentGame: Buzz.last()});
-    const [game, setGame] = useBuzz({name: "", players: Buzz.all(Player)});
+    const [player, setPlayer] = useBuzz({name: ""});
+    const [game, setGame] = useBuzz({name: "", players: Buzz.index(player)});
 
     if (player === null) {
         return <InputForm label="Player: "

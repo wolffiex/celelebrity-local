@@ -5,89 +5,76 @@ function newKey() {
     return btoa(Math.random());
 }
 
-function getIndexedProp(id, propDefinition) {
-    switch (propDefinition.type) {
-        case _BuzzIndex.all:
-            return function() {
-                console.log('dunno how to handle all()', propDefinition.data);
-                return [];
-            }
-        case _BuzzIndex.last:
-            return function() {
-                console.log('dlglu')
-                return 'fkdu';
-            }
-        default:
-            throw new Error("Unreachable");
-    }
-}
-
-
 function node() {
     const nodeKey = newKey();
+    const assocs = new Map();
 
-    function getResult(id, meta, values) {
-        const schema = meta.schema;
-        const lastResult = meta.result;
+    function index(schema) {
+        return new BuzzIndex(schema, assocs); 
+    }
+
+    function getResult(id, schema, values) {
+        Object.freeze(schema);
         let result = {
+            get schema() {
+                return schema;
+            },
             get id() {
                 return id;
             }
         };
 
-        for (const [propName, propDefinition] of Object.entries(meta.schema)) {
-            if (propDefinition instanceof _BuzzIndex) {
-                let get = getIndexedProp(id, propDefinition);
-                Object.defineProperty(result, propName, {enumerable: true, get});
-            } else {
-                const value = propName in values ? values[propName] : 
-                    (lastResult ? lastResult.get(propName) : propDefinition);
-                Object.defineProperty(result, propName, {enumerable: true, value});
-            }
+        for (const [propName, propDef] of Object.entries(schema)) {
+            const value = propDef instanceof BuzzIndex ?
+                new BuzzIndexProperty(propDef) :
+                (values && propName in values) ? values[propName] : propDef; 
+            Object.defineProperty(result, propName, {enumerable: true, value});
         }
 
-        return {schema, result};
+        return result;
     }
 
-    function useBuzzConst(name, schema) {
-        let [meta] = useState(getResult(name, {schema, result:null}, null));
-        return meta.result;
+    function constant(id, schema) {
+        return getResult(id, schema);
     }
 
     function useBuzz(schema) {
         let id = null;
 
-        let [meta, setter] = useState({schema, result:null});
-
-        function selectResult(values) {
+        let [result, setResult] = useState(null);
+        return [result, function (values) {
             id = newKey();
-            setter(getResult(id, meta, values));
-        }
-
-        return [meta.result, selectResult, {schema}];
+            setResult(getResult(id, schema, values));
+        }];
     }
 
-    return {useBuzz, useBuzzConst, toString: () => 'Buzz node ' + nodeKey};
+    return {useBuzz, constant, index, toString: () => 'Buzz node ' + nodeKey};
 }
 
 function key(hash) {
     return uuidv4();
 }
 
-function all(node) {
-    return new _BuzzIndex(_BuzzIndex.all, node);
+function index(schema) {
+    return new BuzzIndex(schema);
 }
 
-function last() {
-    return new _BuzzIndex(_BuzzIndex.last);
+function BuzzIndex(schema) {
+    // map of id to list[schema]
+    Object.freeze(schema);
+    Object.defineProperty(this, "schema", {enumerable: true, value: schema, writable:false});
+    Object.defineProperty(this, "_assocs", {enumerable: false, value: new Map(), writable:false});
 }
 
-function _BuzzIndex(type, ...data) {
-    this.type = type;
-    this.data = data;
+function BuzzIndexProperty(buzzIndex) {
 }
-_BuzzIndex.last = Symbol();
-_BuzzIndex.all = Symbol();
 
-const Buzz = {node, key, all, last};
+BuzzIndexProperty.prototype.last = function() {
+}
+
+BuzzIndexProperty.prototype.all = function() {
+    return [];
+}
+
+const Buzz = {node, key, index};
 export default Buzz;

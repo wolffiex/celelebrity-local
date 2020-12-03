@@ -4,17 +4,15 @@ import InputForm from './inputform.js';
 
 function ChooseGame(props) {
     const useBuzz = props.buzz.useBuzz;
-    const useBuzzConst = props.buzz.useBuzzConst;
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-    const gameRoom = useBuzz({name: ""});
-    const Games = useBuzzConst("CELEBRITY", {list: Buzz.all(gameRoom)});
-    console.log('Games', Games, Games.list)
+    const games = props.buzz.constant("CELEBRITY", {list: Buzz.index({name:""})});
+    console.log('games', games, games.list)
 
     function addGame(name) {
         console.log('hadd', name)
-        props.buzz.assoc(Games.list, {name});
+        props.buzz.assoc(games.list, {name});
     }
 
     const createGameForm = !isCreating ? null :
@@ -28,7 +26,8 @@ function ChooseGame(props) {
         }
     }
 
-    let gameOptions = Games.list.map(gameChoice => {
+    console.log('higames', games.id, games.list)
+    let gameOptions = games.list.all().map(gameChoice => {
         return <option value={gameChoice.id}>{gameChoice.name}</option>
     });
 
