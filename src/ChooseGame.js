@@ -3,15 +3,18 @@ import Buzz from "./buzz.js";
 import InputForm from './inputform.js';
 
 function ChooseGame(props) {
-    const useBuzz = props.useBuzz;
+    const useBuzz = props.buzz.useBuzz;
+    const useBuzzConst = props.buzz.useBuzzConst;
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-    const games = useBuzz({list: Buzz.all()}, "CELEBRITY");
-    console.log('games', games.list)
+    const gameRoom = useBuzz({name: ""});
+    const Games = useBuzzConst("CELEBRITY", {list: Buzz.all(gameRoom)});
+    console.log('Games', Games, Games.list)
 
-    function addGame(e) {
-        console.log('hadd', e)
+    function addGame(name) {
+        console.log('hadd', name)
+        props.buzz.assoc(Games.list, {name});
     }
 
     const createGameForm = !isCreating ? null :
@@ -25,13 +28,15 @@ function ChooseGame(props) {
         }
     }
 
+    let gameOptions = Games.list.map(gameChoice => {
+        return <option value={gameChoice.id}>{gameChoice.name}</option>
+    });
+
     const selectGameForm = 
         <form>
             <select name="games" disabled={isCreating} value={selected}
                     onChange={onChange} size="5">
-                <option value="keyy">Game onee</option>
-                <option value="kyey">Game two</option>
-                <option value="kyey">Game two</option>
+                {gameOptions}
                 <option value={NEW_GAME_VALUE}>Create new game</option>
             </select>
         </form>;

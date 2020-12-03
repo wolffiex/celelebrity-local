@@ -5,6 +5,25 @@ function newKey() {
     return btoa(Math.random());
 }
 
+function getIndexedProp(id, propDefinition) {
+    const [type, ...args] = propDefinition.info;
+    switch (type) {
+        case _BuzzIndex.all:
+            return function() {
+                console.log('dunno how to handle all()', args[0]);
+                return [];
+            }
+        case _BuzzIndex.last:
+            return function() {
+                console.log('dlglu')
+                return 'fkdu';
+            }
+        default:
+            throw new Error("Unreachable");
+    }
+}
+
+
 function node() {
     const nodeKey = newKey();
 
@@ -19,9 +38,11 @@ function node() {
 
         for (const [propName, propDefinition] of Object.entries(meta.schema)) {
             if (propDefinition instanceof _BuzzIndex) {
-                console.log('dunno how to handle', propDefinition)
+                let get = getIndexedProp(id, propDefinition);
+                Object.defineProperty(result, propName, {enumerable: true, get});
             } else {
-                const value = propName in values ? values[propName] : propDefinition;
+                const value = propName in values ? values[propName] : 
+                    (lastResult ? lastResult.get(propName) : propDefinition);
                 Object.defineProperty(result, propName, {enumerable: true, value});
             }
         }
@@ -29,10 +50,12 @@ function node() {
         return {schema, result};
     }
 
-    function addAssoc(fromId, toId) {
+    function useBuzzConst(name, schema) {
+        let [meta] = useState(getResult(name, {schema, result:null}, null));
+        return meta.result;
     }
 
-    function useBuzz(schema, assoc) {
+    function useBuzz(schema) {
         let id = null;
 
         let [meta, setter] = useState({schema, result:null});
@@ -42,34 +65,30 @@ function node() {
             setter(getResult(id, meta, values));
         }
 
-        if (assoc != null) {
-            addAssoc(assoc, id);
-        }
-
-        return [meta.result, selectResult];
+        return [meta.result, selectResult, {schema}];
     }
 
-    return {useBuzz, toString: () => 'Buzz node ' + nodeKey};
+    return {useBuzz, useBuzzConst, toString: () => 'Buzz node ' + nodeKey};
 }
 
 function key(hash) {
     return uuidv4();
 }
 
-const allSymbol = Symbol();
-
 function all(node) {
-    return new _BuzzIndex(_BuzzIndex.all, {node});
+    return new _BuzzIndex(_BuzzIndex.all, node);
 }
 
 function last() {
-    return new _BuzzIndex(_BuzzIndex.last, node);
+    return new _BuzzIndex(_BuzzIndex.last);
 }
 
-const _BuzzIndexEnum= {all: Symbol(), last: Symbol()};
 function _BuzzIndex(...args) {
+    console.log('args', args)
     this.info = [...args];
 }
+_BuzzIndex.last = Symbol();
+_BuzzIndex.all = Symbol();
 
 const Buzz = {node, key, all, last};
 export default Buzz;
