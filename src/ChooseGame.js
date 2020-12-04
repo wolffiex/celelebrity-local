@@ -7,16 +7,7 @@ function ChooseGame(props) {
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-    const games = props.buzz.constant("CELEBRITY", {list: Buzz.index({name:""})});
-    console.log('games', games, games.list)
-
-    function addGame(name) {
-        console.log('hadd', name)
-        props.buzz.assoc(games.list, {name});
-    }
-
-    const createGameForm = !isCreating ? null :
-        <InputForm onSubmit={addGame} label="Game name: " />;
+    const games = props.games;
 
     function onChange(e){
         e.preventDefault();
@@ -27,7 +18,7 @@ function ChooseGame(props) {
     }
 
     console.log('higames', games.id, games.list)
-    let gameOptions = games.list.all().map(gameChoice => {
+    let gameOptions = games.all.map(gameChoice => {
         return <option value={gameChoice.id}>{gameChoice.name}</option>
     });
 
@@ -39,6 +30,9 @@ function ChooseGame(props) {
                 <option value={NEW_GAME_VALUE}>Create new game</option>
             </select>
         </form>;
+
+    const createGameForm = !isCreating ? null :
+        <InputForm onSubmit={name => games.all.append({name})} label="Game name: " />;
 
     return (
         <div className="gameChoice">

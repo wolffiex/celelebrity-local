@@ -1,80 +1,101 @@
-import { v4 as uuidv4 } from 'uuid';
 import { useState } from 'react';
 
 function newKey() {
     return btoa(Math.random());
 }
 
-function node() {
-    const nodeKey = newKey();
-    const assocs = new Map();
+function createResult(id, schema, update) {
+    Object.freeze(schema);
+    let result = {
+        get id() {
+            return id;
+        },
+        get schema() {
+            return schema;
+        }
+    };
 
-    function index(schema) {
-        return new BuzzIndex(schema, assocs); 
+    for (const [propName, propDef] of Object.entries(schema)) {
+        Object.defineProperty(result, propName, defineProp(propName, propDef, update));
     }
 
-    function getResult(id, schema, values) {
-        Object.freeze(schema);
-        let result = {
-            get schema() {
-                return schema;
-            },
-            get id() {
-                return id;
-            }
-        };
+    Object.freeze(result);
+    return result;
+}
 
-        for (const [propName, propDef] of Object.entries(schema)) {
-            const value = propDef instanceof BuzzIndex ?
-                new BuzzIndexProperty(propDef) :
-                (values && propName in values) ? values[propName] : propDef; 
-            Object.defineProperty(result, propName, {enumerable: true, value});
+function node() {
+    const nodeKey = newKey();
+
+    function useBuzz(schema) {
+        const update = () => {
+            setResult(r => [...r])
         }
+        const [[result], setResult] = useState(() => 
+            [createResult(schema.id || newKey(), schema, update)]);
 
+        console.log('use', result)
         return result;
     }
 
-    function constant(id, schema) {
-        return getResult(id, schema);
+    return {useBuzz, toString: () => 'Buzz node ' + nodeKey};
+}
+
+function defineProp(propName, propDef, update) {
+    let get;
+    let set = _ => {
+        throw new Error("Can't assign to", propName);
     }
 
-    function useBuzz(schema) {
-        let id = null;
-
-        let [result, setResult] = useState(null);
-        return [result, function (values) {
-            id = newKey();
-            setResult(getResult(id, schema, values));
-        }];
+    if (propDef instanceof Object) {
+        let assocs = [];
+        get = () => {
+            let updateLocked = false;
+            const subUpdate = () => updateLocked || update();
+            const append = function(values) {
+                updateLocked = true;
+                try {
+                    const result = createResult(newKey(), propDef, subUpdate);
+                    for (let k in values) {
+                        result[k] = values[k];
+                    }
+                    assocs.unshift(result);
+                    return result;
+                } finally {
+                    updateLocked = false;
+                    update();
+                }
+            }
+            let seq = {append};
+            seq[Symbol.iterator] = function*() {
+                for (var assoc of assocs) {
+                    yield assoc;
+                }
+            }
+            seq.map = (...args) => [...seq].map(...args);
+            return seq;
+        }
+    } else {
+        let value = propDef;
+        get = () => value;
+        set = v => {
+            value = v;
+            console.log('hhiii', value, propName)
+            update();
+        }
     }
 
-    return {useBuzz, constant, index, toString: () => 'Buzz node ' + nodeKey};
+    return {get, set, enumerable: true}
 }
 
-function key(hash) {
-    return uuidv4();
+function enumerate(...variants) {
+    return new BuzzEnum(variants);
 }
 
-function index(schema) {
-    return new BuzzIndex(schema);
+function BuzzEnum(variants) {
+    for (var k in variants) {
+        this[k] = {enum: this};
+    }
 }
 
-function BuzzIndex(schema) {
-    // map of id to list[schema]
-    Object.freeze(schema);
-    Object.defineProperty(this, "schema", {enumerable: true, value: schema, writable:false});
-    Object.defineProperty(this, "_assocs", {enumerable: false, value: new Map(), writable:false});
-}
-
-function BuzzIndexProperty(buzzIndex) {
-}
-
-BuzzIndexProperty.prototype.last = function() {
-}
-
-BuzzIndexProperty.prototype.all = function() {
-    return [];
-}
-
-const Buzz = {node, key, index};
+const Buzz = {node, enumerate, key: newKey};
 export default Buzz;

@@ -2,21 +2,29 @@ import InputForm from './inputform.js';
 import Buzz from "./buzz.js";
 import ChooseGame from "./ChooseGame.js";
 
+const GAME_STATES = Buzz.enumerate("Initialized", "Created", "Ongoing", "Finished");
 function App(props) {
     const useBuzz = props.buzz.useBuzz;
-    const [player, setPlayer] = useBuzz({name: ""});
-    const [game, setGame] = useBuzz({name: "", players: Buzz.index(player)});
+    const player = useBuzz({name: "", ready: false});
+    console.log('app', player, player.id, player.schema)
+    const gameSchema = {
+        name: "", players: player.schema, state: GAME_STATES.Initialized};
+    const games = useBuzz({id: "CELEBRITY", all: gameSchema, chosen: gameSchema});
 
-    if (player === null) {
+    if (!player.ready) {
         return <InputForm label="Player: "
-            onSubmit={name => setPlayer({name, ready: true} )} />;
+            onSubmit={name => {
+                console.log('lkdj player', player, player.name)
+                player.ready = true;
+                player.name = name; }} />;
     }
     
-    if (game === null) {
-        return <ChooseGame setGame={setGame} player={player} buzz={props.buzz}/>
+    const chosen = games.chosen[0];
+    if (!chosen || chosen.state === GAME_STATES.Finished) {
+        return <ChooseGame games={games} player={player} buzz={props.buzz}/>
     }
 
-    return <GamePlay game={game} player={player}/>
+    return <GamePlay game={chosen} player={player}/>
 }
 
 function GamePlay(props) {
