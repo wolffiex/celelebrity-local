@@ -18,9 +18,9 @@ function ChooseGame(props) {
     }
 
     console.log('higames', games.id, games.list)
-    let gameOptions = games.all.map(gameChoice => {
-        return <option value={gameChoice.id}>{gameChoice.name}</option>
-    });
+    let gameOptions = games.all.map(({id, name}) => 
+        <option value={id} key={id}>{name}</option>
+    );
 
     const selectGameForm = 
         <form>
