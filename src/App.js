@@ -13,7 +13,6 @@ function App(props) {
     if (!player.ready) {
         return <InputForm label="Player: "
             onSubmit={name => {
-                console.log('lkdj player', player, player.name)
                 player.ready = true;
                 player.name = name; }} />;
     }
@@ -23,6 +22,7 @@ function App(props) {
         return <ChooseGame games={games} player={player} buzz={props.buzz}/>
     }
 
+    console.log('got here', chosen.name)
     return <GamePlay game={chosen} player={player}/>
 }
 

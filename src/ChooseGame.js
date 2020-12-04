@@ -23,6 +23,7 @@ function ChooseGame(props) {
         const id = e.target.games.value;
         console.log('hi chod', games.chosen)
         games.chosen = id;
+        games.chosen.state = "Initialized";
     }
 
     const selectGameForm = 

@@ -50,17 +50,25 @@ function defineProp(propName, propDef, update, cache) {
 
     if (propDef instanceof BuzzLast) {
         const assoc = assocGet(propDef.schema, update, cache);
-        get = () => assoc[0] || null;
+        get = () => assoc.last();
         set = r => assoc.append(r);
     } else if (propDef instanceof Object) {
         const assoc = assocGet(propDef, update, cache);
         get = () => assoc;
+    } else if (propDef instanceof BuzzEnum) {
+        let value = propDef;
+        get = () => value;
+        set = v => {
+            if (!(v instanceof BuzzEnum)) {
+                value = propDef.enumeration[v];
+            }
+            update();
+        }
     } else {
         let value = propDef;
         get = () => value;
         set = v => {
             value = v;
-            console.log('hhiii', value, propName)
             update();
         }
     }
@@ -73,7 +81,6 @@ function assocGet(schema, update, cache) {
     let updateLocked = false;
     const subUpdate = () => updateLocked || update();
     const append = function(idOrValues) {
-        console.log('wanna app', idOrValues)
         let [id, values] = idOrValues instanceof Object ? 
             [newKey(), idOrValues] : [idOrValues, {}];
         updateLocked = true;
@@ -89,7 +96,8 @@ function assocGet(schema, update, cache) {
             update();
         }
     }
-    let seq = {append};
+    const last = () => assocs[assocs.length-1] || null;
+    let seq = {append, last};
     seq.map = (...args) => [...seq].map(...args);
     seq[Symbol.iterator] = function*() {
         for (var assoc of assocs) {
@@ -105,7 +113,7 @@ function enumerate(...variants) {
 
 function BuzzEnum(variants) {
     for (var k in variants) {
-        this[k] = {enum: this};
+        this[k] = {enumeration: this};
     }
 }
 
