@@ -17,6 +17,7 @@ function getResult(id, schema, update, cache) {
         };
 
         for (const [propName, propDef] of Object.entries(schema)) {
+            if (propDef == null) throw new Error("Invalid property definition", propName);
             Object.defineProperty(result, propName, defineProp(propName, propDef, update, cache));
         }
 
@@ -48,22 +49,26 @@ function defineProp(propName, propDef, update, cache) {
         throw new Error("Can't assign to", propName);
     }
 
-    if (propDef instanceof BuzzLast) {
+    if (propDef instanceof BuzzEnumVariant) {
+        console.log('buzzen', propDef)
+        let value = propDef;
+        get = () => value;
+        set = v => {
+            console.log('enum set', v)
+            if (!(v instanceof BuzzEnumVariant)) {
+                value = propDef.enumeration[v];
+                if (!value) throw new Error("Unrecognized enum value", propName, propDef, v);
+            }
+            console.log('gonna up', v, value)
+            update();
+        }
+    } else if (propDef instanceof BuzzLast) {
         const assoc = assocGet(propDef.schema, update, cache);
         get = () => assoc.last();
         set = r => assoc.append(r);
     } else if (propDef instanceof Object) {
         const assoc = assocGet(propDef, update, cache);
         get = () => assoc;
-    } else if (propDef instanceof BuzzEnum) {
-        let value = propDef;
-        get = () => value;
-        set = v => {
-            if (!(v instanceof BuzzEnum)) {
-                value = propDef.enumeration[v];
-            }
-            update();
-        }
     } else {
         let value = propDef;
         get = () => value;
@@ -112,9 +117,14 @@ function enumerate(...variants) {
 }
 
 function BuzzEnum(variants) {
-    for (var k in variants) {
-        this[k] = {enumeration: this};
+    console.log('enum', variants)
+    for (var k of variants) {
+        this[k] = new BuzzEnumVariant(this);
     }
+}
+
+function BuzzEnumVariant(enumeration) {
+    this.enumeration = enumeration;
 }
 
 function BuzzLast(schema) {

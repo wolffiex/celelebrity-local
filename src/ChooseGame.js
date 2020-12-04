@@ -2,6 +2,7 @@ import { useState } from 'react';
 import InputForm from './inputform.js';
 
 function ChooseGame(props) {
+    console.log("GoG")
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
@@ -21,9 +22,7 @@ function ChooseGame(props) {
     function submitGameChoice(e) {
         e.preventDefault();
         const id = e.target.games.value;
-        console.log('hi chod', games.chosen)
         games.chosen = id;
-        games.chosen.state = "Initialized";
     }
 
     const selectGameForm = 
