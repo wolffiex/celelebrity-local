@@ -6,10 +6,9 @@ const GAME_STATES = Buzz.enumerate("Initialized", "Created", "Ongoing", "Finishe
 function App(props) {
     const useBuzz = props.buzz.useBuzz;
     const player = useBuzz({name: "", ready: false});
-    console.log('app', player, player.id, player.schema)
     const gameSchema = {
         name: "", players: player.schema, state: GAME_STATES.Initialized};
-    const games = useBuzz({id: "CELEBRITY", all: gameSchema, chosen: gameSchema});
+    const games = useBuzz({id: "CELEBRITY", all: gameSchema, chosen: Buzz.last(gameSchema)});
 
     if (!player.ready) {
         return <InputForm label="Player: "
@@ -19,7 +18,7 @@ function App(props) {
                 player.name = name; }} />;
     }
     
-    const chosen = games.chosen[0];
+    const chosen = games.chosen;
     if (!chosen || chosen.state === GAME_STATES.Finished) {
         return <ChooseGame games={games} player={player} buzz={props.buzz}/>
     }

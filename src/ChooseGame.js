@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import Buzz from "./buzz.js";
 import InputForm from './inputform.js';
 
 function ChooseGame(props) {
-    const useBuzz = props.buzz.useBuzz;
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
@@ -11,28 +9,39 @@ function ChooseGame(props) {
 
     function onChange(e){
         e.preventDefault();
-        if (e.target.value === NEW_GAME_VALUE) {
+        const value = e.target.value;
+        if (value === NEW_GAME_VALUE) {
             setSelected("");
             setCreating(true);
+        } else {
+            setSelected(value);
         }
     }
 
-    console.log('higames', games.id, games.list)
-    let gameOptions = games.all.map(({id, name}) => 
-        <option value={id} key={id}>{name}</option>
-    );
+    function submitGameChoice(e) {
+        e.preventDefault();
+        const id = e.target.games.value;
+        console.log('hi chod', games.chosen)
+        games.chosen = id;
+    }
 
     const selectGameForm = 
-        <form>
+        <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
                     onChange={onChange} size="5">
-                {gameOptions}
+                {games.all.map(({id, name}) => 
+                    <option value={id} key={id}>{name}</option>)}
                 <option value={NEW_GAME_VALUE}>Create new game</option>
             </select>
+            <input type="submit" />
         </form>;
 
+    function submitNewGame(name) {
+        games.all.append({name});
+        setCreating(false);
+    }
     const createGameForm = !isCreating ? null :
-        <InputForm onSubmit={name => games.all.append({name})} label="Game name: " />;
+        <InputForm onSubmit={submitNewGame} label="Game name: " />;
 
     return (
         <div className="gameChoice">
