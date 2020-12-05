@@ -11,7 +11,6 @@ function node() {
 
     function useBuzz(schema) {
         const [{id}, update] = useState({id : schema.id || newKey()});
-        console.log('reenter', id)
         const invalidate = () => update({id});
         const getValues = id => valuesCache.get(id, invalidate);
         const result = getResult(id, schema, getValues);
@@ -56,7 +55,7 @@ function getResult(id, schema, getValues) {
     for (const [propName, propDef] of Object.entries(schema)) {
         if (propDef == null) throw new Error("Invalid property definition", propName);
         Object.defineProperty(result, 
-            propName, defineProp(propDef, iterateValues(propName, valuesList), getValues));
+            propName, defineProp(propDef, iterateValues(propName, valuesList), getValues, propName));
     }
     return result;
 }
@@ -75,35 +74,36 @@ function getPropType(propDef) {
     }
 }
 
-function defineProp(propDef, getPropValues, getValues) {
+function defineProp(propDef, getPropValues, getValues, pname) {
     let get;
+    function* iterateConnection(schema) {
+        const seenMap = new Map();
+        for (let value of getPropValues()) {
+            let id = value.id;
+            // TODO: Handle deletes
+            if (!seenMap.has(id)) {
+                const result = getResult(id, schema, getValues);
+                yield result;
+            }
+            seenMap.set(id, true);
+        }
+    }
+
+    function first(it, fallback) {
+        const {value, done} = it.next();
+
+        return done && value === undefined ? fallback : value;
+    }
+
     switch(getPropType(propDef)) {
         case "Last":
-            get = () => getPropValues();
+            get = () => first(iterateConnection(propDef.schema), null);
             break;
         case "List":
-            function* iterateConnection() {
-                const seenMap = new Map();
-                for (let value of getPropValues()) {
-                    let id = value.id;
-                    // TODO: Handle deletes
-                    if (!seenMap.has(id)) {
-                        const result = getResult(id, propDef, getValues);
-                        console.log('yield', result.id, result.name);
-                        yield result;
-                    }
-                    seenMap.set(id, true);
-                }
-            }
-            get = () => wu(iterateConnection());
+            get = () => wu(iterateConnection(propDef));
             break;
         default:
-            get = () => {
-                for (let value of getPropValues()) {
-                    return value;
-                }
-                return propDef;
-            }
+            get = () => first(getPropValues(), propDef);
             break;
     }
     return {get, enumerable: true}
@@ -123,7 +123,6 @@ function enumerate(...variants) {
 }
 
 function BuzzEnum(variants) {
-    console.log('enum', variants)
     for (var k of variants) {
         this[k] = new BuzzEnumVariant(this);
     }

@@ -21,10 +21,9 @@ function ChooseGame(props) {
     function submitGameChoice(e) {
         e.preventDefault();
         const id = e.target.games.value;
-        props.chooser(props.buzz.select(id));
+        props.choose(id);
     }
 
-    console.log('hola', games.all.map(({id, name}) => 'game' + id + "xxxx" + name).toArray())
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
@@ -35,8 +34,6 @@ function ChooseGame(props) {
             </select>
             <input type="submit" />
         </form>;
-
-        console.log('se', selectGameForm);
 
     function submitNewGame(name) {
         props.addGame(name);
