@@ -1,115 +1,121 @@
 import { useState } from 'react';
+var wu = require("wu");
 
 function newKey() {
     return btoa(Math.random());
 }
 
-function getResult(id, schema, update, cache) {
-    if (!cache.has(id)) {
-        Object.freeze(schema);
-        let result = {
-            get id() {
-                return id;
-            },
-            get schema() {
-                return schema;
-            }
-        };
-
-        for (const [propName, propDef] of Object.entries(schema)) {
-            if (propDef == null) throw new Error("Invalid property definition", propName);
-            Object.defineProperty(result, propName, defineProp(propName, propDef, update, cache));
-        }
-
-        cache.set(id, result);
-    }
-
-    return cache.get(id);
-}
-
 function node() {
     const nodeKey = newKey();
-    const cache = new Map();
+    const valuesCache = createValuesCache();
 
     function useBuzz(schema) {
-        const update = () => setResult(r => [...r])
-        const [[result], setResult] = useState(() => 
-            [getResult(schema.id || newKey(), schema, update, cache)]);
+        const [{id}, update] = useState({id : schema.id || newKey()});
+        console.log('reenter', id)
+        const invalidate = () => update({id});
+        const getValues = id => valuesCache.get(id, invalidate);
+        const result = getResult(id, schema, getValues);
 
-        return result;
+        function writer(values) {
+            let setObj = {};
+            function set(k, v) {
+                setObj[k] = v;
+            }
+            for (const [propName, propValue] of Object.entries(values)){
+                const propDef = schema[propName];
+                const propType = getPropType(propDef);
+                if (propType === "Last" || propType === "List") {
+                    const subId = propValue.id || newKey();
+                    valuesCache.append(subId, propValue);
+                    set(propName, {id: subId});
+                } else {
+                    set(propName, propValue);
+                }
+            }
+            valuesCache.append(id, setObj);
+        }
+
+        return [result, writer];
     }
 
     return {useBuzz, toString: () => 'Buzz node ' + nodeKey};
 }
 
-
-function defineProp(propName, propDef, update, cache) {
-    let get;
-    let set = _ => {
-        throw new Error("Can't assign to", propName);
-    }
-
-    if (propDef instanceof BuzzEnumVariant) {
-        console.log('buzzen', propDef)
-        let value = propDef;
-        get = () => value;
-        set = v => {
-            console.log('enum set', v)
-            if (!(v instanceof BuzzEnumVariant)) {
-                value = propDef.enumeration[v];
-                if (!value) throw new Error("Unrecognized enum value", propName, propDef, v);
-            }
-            console.log('gonna up', v, value)
-            update();
+function getResult(id, schema, getValues) {
+    Object.freeze(schema);
+    let result = {
+        get id() {
+            return id;
+        },
+        get schema() {
+            return schema;
         }
-    } else if (propDef instanceof BuzzLast) {
-        const assoc = assocGet(propDef.schema, update, cache);
-        get = () => assoc.last();
-        set = r => assoc.append(r);
-    } else if (propDef instanceof Object) {
-        const assoc = assocGet(propDef, update, cache);
-        get = () => assoc;
-    } else {
-        let value = propDef;
-        get = () => value;
-        set = v => {
-            value = v;
-            update();
-        }
-    }
+    };
 
-    return {get, set, enumerable: true}
+    const valuesList = getValues(id);
+    for (const [propName, propDef] of Object.entries(schema)) {
+        if (propDef == null) throw new Error("Invalid property definition", propName);
+        Object.defineProperty(result, 
+            propName, defineProp(propDef, iterateValues(propName, valuesList), getValues));
+    }
+    return result;
 }
 
-function assocGet(schema, update, cache) {
-    let assocs = [];
-    let updateLocked = false;
-    const subUpdate = () => updateLocked || update();
-    const append = function(idOrValues) {
-        let [id, values] = idOrValues instanceof Object ? 
-            [newKey(), idOrValues] : [idOrValues, {}];
-        updateLocked = true;
-        try {
-            const result = getResult(id, schema, subUpdate, cache);
-            for (let k in values) {
-                result[k] = values[k];
+function getPropType(propDef) {
+    if (propDef == null) {
+        throw new Error("Invalid propDef");
+    }
+
+    if (propDef instanceof BuzzLast) {
+        return "Last";
+    } else if (propDef instanceof Object) {
+        return "List"
+    } else {
+        return typeof propDef;
+    }
+}
+
+function defineProp(propDef, getPropValues, getValues) {
+    let get;
+    switch(getPropType(propDef)) {
+        case "Last":
+            get = () => getPropValues();
+            break;
+        case "List":
+            function* iterateConnection() {
+                const seenMap = new Map();
+                for (let value of getPropValues()) {
+                    let id = value.id;
+                    // TODO: Handle deletes
+                    if (!seenMap.has(id)) {
+                        const result = getResult(id, propDef, getValues);
+                        console.log('yield', result.id, result.name);
+                        yield result;
+                    }
+                    seenMap.set(id, true);
+                }
             }
-            assocs.unshift(result);
-            return result;
-        } finally {
-            updateLocked = false;
-            update();
+            get = () => wu(iterateConnection());
+            break;
+        default:
+            get = () => {
+                for (let value of getPropValues()) {
+                    return value;
+                }
+                return propDef;
+            }
+            break;
+    }
+    return {get, enumerable: true}
+}
+
+function iterateValues(propName, valuesList) {
+    return function* () {
+        for (var i = valuesList.length-1; i >=0; i--) {
+            const values = valuesList[i];
+            if (propName in values) yield values[propName]
         }
     }
-    const last = () => assocs[assocs.length-1] || null;
-    let seq = {append, last};
-    seq.map = (...args) => [...seq].map(...args);
-    seq[Symbol.iterator] = function*() {
-        for (var assoc of assocs) {
-            yield assoc;
-        }
-    }
-    return seq;
 }
 
 function enumerate(...variants) {
@@ -138,3 +144,31 @@ function last(schema) {
 
 const Buzz = {node, enumerate, last, key: newKey};
 export default Buzz;
+
+function createValuesCache() {
+    let callbackMap = new Map();
+    let valuesMap = new Map();
+
+    function get(id, invalidate) {
+        const oldCallback = callbackMap.get(id);
+        callbackMap.set(id, function() {
+            invalidate();
+            oldCallback && oldCallback();
+        });
+
+        return _get(id);
+    }
+
+    function append(id, values) {
+        valuesMap.set(id, _get(id).concat(values));
+        const callback = callbackMap.get(id);
+        callbackMap.delete(id);
+        callback && callback();
+    }
+
+    function _get(id) {
+        return valuesMap.get(id) || [];
+    }
+
+    return {get, append};
+}

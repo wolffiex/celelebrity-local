@@ -2,7 +2,6 @@ import { useState } from 'react';
 import InputForm from './inputform.js';
 
 function ChooseGame(props) {
-    console.log("GoG")
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
@@ -22,22 +21,25 @@ function ChooseGame(props) {
     function submitGameChoice(e) {
         e.preventDefault();
         const id = e.target.games.value;
-        games.chosen = id;
+        props.chooser(props.buzz.select(id));
     }
 
+    console.log('hola', games.all.map(({id, name}) => 'game' + id + "xxxx" + name).toArray())
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
                     onChange={onChange} size="5">
                 {games.all.map(({id, name}) => 
-                    <option value={id} key={id}>{name}</option>)}
+                    <option value={id} key={id}>{name}</option>).toArray()}
                 <option value={NEW_GAME_VALUE}>Create new game</option>
             </select>
             <input type="submit" />
         </form>;
 
+        console.log('se', selectGameForm);
+
     function submitNewGame(name) {
-        games.all.append({name});
+        props.addGame(name);
         setCreating(false);
     }
     const createGameForm = !isCreating ? null :
