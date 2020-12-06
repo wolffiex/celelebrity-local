@@ -139,6 +139,7 @@ function createValuesCache() {
         chunks = [currentChunk, chunk, ...chunks];
         currentChunk = [];
         //for entry in chunk, notify
+        wu(chunk).pluck('id').forEach(notify);
     }
 
     function get(id, invalidate) {
@@ -149,16 +150,28 @@ function createValuesCache() {
         });
 
         const log = wu.flatten(chunks);
-        return wu.chain(currentChunk, log)
+        return getEntries()
             .filter(entry => entry.id === id)
             .pluck('values');
     }
 
-    function append(id, values) {
-        currentChunk.unshift({id, values});
+
+    function getEntries(since) {
+        const log = wu.flatten(chunks);
+        return wu.chain(currentChunk, log)
+            .takeWhile(entry => entry.key != since);
+    }
+
+    function notify(id) {
         const callback = callbackMap.get(id);
         callbackMap.delete(id);
         callback && callback();
+    }
+
+    function append(id, values) {
+        const key = newKey();
+        currentChunk.unshift({id, values, key});
+        notify(id);
     }
 
     return {get, append};
