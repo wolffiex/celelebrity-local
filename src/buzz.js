@@ -132,7 +132,14 @@ export default Buzz;
 
 function createValuesCache() {
     let callbackMap = new Map();
-    let valuesMap = new Map();
+
+    let currentChunk = []; //list of key, id, values
+    let chunks = [];
+    function receiveExternalChunk(chunk) {
+        chunks = [currentChunk, chunk, ...chunks];
+        currentChunk = [];
+        //for entry in chunk, notify
+    }
 
     function get(id, invalidate) {
         const oldCallback = callbackMap.get(id);
@@ -141,25 +148,17 @@ function createValuesCache() {
             oldCallback && oldCallback();
         });
 
-        const valuesList = _get(id);
-        function* iterate() {
-            for (var i = valuesList.length-1; i >=0; i--) {
-                yield valuesList[i];
-            }
-        }
-
-        return wu(iterate());
+        const log = wu.flatten(chunks);
+        return wu.chain(currentChunk, log)
+            .filter(entry => entry.id === id)
+            .pluck('values');
     }
 
     function append(id, values) {
-        valuesMap.set(id, _get(id).concat(values));
+        currentChunk.unshift({id, values});
         const callback = callbackMap.get(id);
         callbackMap.delete(id);
         callback && callback();
-    }
-
-    function _get(id) {
-        return valuesMap.get(id) || [];
     }
 
     return {get, append};
