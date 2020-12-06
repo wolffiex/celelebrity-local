@@ -51,14 +51,44 @@ function getResult(id, schema, getValues) {
         }
     };
 
-    const valuesList = getValues(id);
     for (const [propName, propDef] of Object.entries(schema)) {
         if (propDef == null) throw new Error("Invalid property definition", propName);
-        Object.defineProperty(result, 
-            propName, defineProp(propDef, iterateValues(propName, valuesList), getValues));
+        const getPropValues = () => getValues(id).filter(e => propName in e).pluck(propName);
+        Object.defineProperty(result, propName, defineProp(propDef, getPropValues, getValues));
     }
     return result;
 }
+
+function defineProp(propDef, getPropValues, getValues) {
+    let get;
+    function iterateConnection(schema) {
+        const seenMap = new Map();
+        return getPropValues()
+            .reject(value => seenMap.has(value.id))
+            .tap(value => seenMap.set(value.id))
+            .reject(value => value instanceof BuzzDeleted)
+            .map(value => getResult(value.id, schema, getValues))
+    }
+
+    function first(it, fallback) {
+        const {value, done} = it.next();
+        return done && value === undefined ? fallback : value;
+    }
+
+    switch(getPropType(propDef)) {
+        case "Last":
+            get = () => first(iterateConnection(propDef.schema), null);
+            break;
+        case "List":
+            get = () => iterateConnection(propDef);
+            break;
+        default:
+            get = () => first(getPropValues(), propDef);
+            break;
+    }
+    return {get, enumerable: true}
+}
+
 
 function getPropType(propDef) {
     if (propDef == null) {
@@ -71,50 +101,6 @@ function getPropType(propDef) {
         return "List"
     } else {
         return typeof propDef;
-    }
-}
-
-function defineProp(propDef, getPropValues, getValues) {
-    let get;
-    function* iterateConnection(schema) {
-        const seenMap = new Map();
-        for (let value of getPropValues()) {
-            let id = value.id;
-            // TODO: Handle deletes
-            if (!seenMap.has(id)) {
-                const result = getResult(id, schema, getValues);
-                yield result;
-            }
-            seenMap.set(id, true);
-        }
-    }
-
-    function first(it, fallback) {
-        const {value, done} = it.next();
-
-        return done && value === undefined ? fallback : value;
-    }
-
-    switch(getPropType(propDef)) {
-        case "Last":
-            get = () => first(iterateConnection(propDef.schema), null);
-            break;
-        case "List":
-            get = () => wu(iterateConnection(propDef));
-            break;
-        default:
-            get = () => first(getPropValues(), propDef);
-            break;
-    }
-    return {get, enumerable: true}
-}
-
-function iterateValues(propName, valuesList) {
-    return function* () {
-        for (var i = valuesList.length-1; i >=0; i--) {
-            const values = valuesList[i];
-            if (propName in values) yield values[propName]
-        }
     }
 }
 
@@ -155,7 +141,14 @@ function createValuesCache() {
             oldCallback && oldCallback();
         });
 
-        return _get(id);
+        const valuesList = _get(id);
+        function* iterate() {
+            for (var i = valuesList.length-1; i >=0; i--) {
+                yield valuesList[i];
+            }
+        }
+
+        return wu(iterate());
     }
 
     function append(id, values) {
@@ -170,4 +163,7 @@ function createValuesCache() {
     }
 
     return {get, append};
+}
+
+function BuzzDeleted() {
 }
