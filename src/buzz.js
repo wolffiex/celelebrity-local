@@ -55,7 +55,7 @@ function getResult(id, schema, getValues) {
     for (const [propName, propDef] of Object.entries(schema)) {
         if (propDef == null) throw new Error("Invalid property definition", propName);
         Object.defineProperty(result, 
-            propName, defineProp(propDef, iterateValues(propName, valuesList), getValues, propName));
+            propName, defineProp(propDef, iterateValues(propName, valuesList), getValues));
     }
     return result;
 }
@@ -74,7 +74,7 @@ function getPropType(propDef) {
     }
 }
 
-function defineProp(propDef, getPropValues, getValues, pname) {
+function defineProp(propDef, getPropValues, getValues) {
     let get;
     function* iterateConnection(schema) {
         const seenMap = new Map();

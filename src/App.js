@@ -22,11 +22,15 @@ function App(props) {
              addGame={name=>setGames({all: {name}})} buzz={props.buzz} />
     }
 
-    return <GamePlay game={chosen} player={player}/>
+    const setName = name => setChooser({chosen: {id: chosen.id, name}});
+    return <GamePlay game={chosen} setName={setName} player={player}/>
 }
 
 function GamePlay(props) {
-    return <h2>This is game {props.game.name}</h2>;
+    return <div>
+        <h2>This is game {props.game.name}</h2>
+        <button onClick={() => props.setName(props.game.name + "o")}> o me </button>
+    </div>;
 }
 
 export default App;
