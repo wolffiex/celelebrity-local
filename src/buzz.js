@@ -9,22 +9,33 @@ function node() {
     const nodeKey = newKey();
     const valuesCache = createValuesCache();
 
-    function useBuzz(schema) {
-        const [{id}, update] = useState({id : schema.id || newKey()});
+    function debug() {
+        console.log("BUZZ", nodeKey);
+        let n = 0;
+        for (let entry of valuesCache.getEntries()) {
+            console.log(n++, entry.id, entry.values);
+        }
+    }
+
+    function useBuzz(_schema) {
+        const schema = makeSchema(_schema);
+        const [{id}, update] = useState({id: newKey()});
         const invalidate = () => update({id});
         const getValues = id => valuesCache.get(id, invalidate);
-        const result = getResult(id, schema, getValues);
 
         function writer(values) {
+            console.log('writer called', values)
             let setObj = {};
             function set(k, v) {
                 setObj[k] = v;
             }
             for (const [propName, propValue] of Object.entries(values)){
-                const propDef = schema[propName];
-                const propType = getPropType(propDef);
-                if (propType === "Last" || propType === "List") {
-                    const subId = propValue.id || newKey();
+                const propDef = schema.get(propName);
+                console.log(propName, propDef)
+                console.log(id, propName, propValue, propDef.isAssoc());
+                if (propDef.isAssoc()) {
+                    const subId = newKey();
+                    console.log('WHHH', propName, subId, propValue)
                     valuesCache.append(subId, propValue);
                     set(propName, {id: subId});
                 } else {
@@ -32,16 +43,22 @@ function node() {
                 }
             }
             valuesCache.append(id, setObj);
+            debug();
         }
 
+        const result = getResult(id, schema, getValues);
+        console.log('useBuzz', id, result)
         return [result, writer];
     }
 
-    return {useBuzz, toString: () => 'Buzz node ' + nodeKey};
+    return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};
 }
 
+function assert(x, msg) {
+    if (!x) throw( new Error(msg));
+}
 function getResult(id, schema, getValues) {
-    Object.freeze(schema);
+    assert(schema instanceof Schema, "him dk");
     let result = {
         get id() {
             return id;
@@ -51,58 +68,12 @@ function getResult(id, schema, getValues) {
         }
     };
 
-    for (const [propName, propDef] of Object.entries(schema)) {
-        if (propDef == null) throw new Error("Invalid property definition", propName);
-        const getPropValues = () => getValues(id).filter(e => propName in e).pluck(propName);
-        Object.defineProperty(result, propName, defineProp(propDef, getPropValues, getValues));
+    for (const [propName, propDef] of schema.entries(id, getValues)) {
+        Object.defineProperty(result, propName, propDef);
     }
     return result;
 }
 
-function defineProp(propDef, getPropValues, getValues) {
-    let get;
-    function iterateConnection(schema) {
-        const seenMap = new Map();
-        return getPropValues()
-            .reject(value => seenMap.has(value.id))
-            .tap(value => seenMap.set(value.id))
-            .reject(value => value instanceof BuzzDeleted)
-            .map(value => getResult(value.id, schema, getValues))
-    }
-
-    function first(it, fallback) {
-        const {value, done} = it.next();
-        return done && value === undefined ? fallback : value;
-    }
-
-    switch(getPropType(propDef)) {
-        case "Last":
-            get = () => first(iterateConnection(propDef.schema), null);
-            break;
-        case "List":
-            get = () => iterateConnection(propDef);
-            break;
-        default:
-            get = () => first(getPropValues(), propDef);
-            break;
-    }
-    return {get, enumerable: true}
-}
-
-
-function getPropType(propDef) {
-    if (propDef == null) {
-        throw new Error("Invalid propDef");
-    }
-
-    if (propDef instanceof BuzzLast) {
-        return "Last";
-    } else if (propDef instanceof Object) {
-        return "List"
-    } else {
-        return typeof propDef;
-    }
-}
 
 function enumerate(...variants) {
     return new BuzzEnum(variants);
@@ -174,8 +145,103 @@ function createValuesCache() {
         notify(id);
     }
 
-    return {get, append};
+    return {get, append, getEntries};
 }
 
 function BuzzDeleted() {
 }
+
+function Schema(_schema) {
+    if (_schema instanceof Schema) console.error("FIx this");
+    function get(propName) {
+        return propName in _schema ? 
+            new PropDef(_schema[propName]) : null;
+    }
+
+    this.get = get
+    this.matches = entry => {
+        //🤔
+    }
+    this.entries = (id, getValues) => {
+        function getGetPropValues(propName) {
+            return function() {
+                return getValues(id).filter(e => propName in e).pluck(propName);
+            }
+        }
+        return Object.keys(_schema).map(propName => 
+            [propName, get(propName).define(getGetPropValues(propName), getValues)]);
+    }
+}
+
+function makeSchema(schemaOr_schema) {
+    if (schemaOr_schema instanceof Schema) return schemaOr_schema;
+    else return new Schema(schemaOr_schema);
+}
+
+function PropDef(schemaPropValue) {
+    let type = null;
+    let subSchema = null;
+    if (schemaPropValue instanceof BuzzLast) {
+        type = PropDef.Types.Last;
+        subSchema = makeSchema(schemaPropValue.schema);
+    } else if (schemaPropValue instanceof Object) {
+        type = PropDef.Types.List;
+        subSchema = makeSchema(schemaPropValue);
+    } else {
+        type = PropDef.Types[typeof schemaPropValue];
+    }
+
+    this.type = type;
+
+    const isAssoc = () => !!subSchema;
+    this.isAssoc = isAssoc
+    this.define = (getPropValues, getValues) => {
+        let get;
+        if (isAssoc()) {
+            const connection = () => iterateConnection(getPropValues(), getValues, subSchema);
+            switch (type) {
+                case PropDef.Types.Last:
+                    get = () => first(connection(), null)
+                    break;
+                case PropDef.Types.List:
+                    get = connection;
+                    break;
+                default:
+                    throw new Error('Unexpected');
+            }
+        } else {
+            get = () => {
+                return first(getPropValues(), schemaPropValue);
+            }
+        }
+        return {get, enumerable: true};
+    }
+
+    return typeof propDef;
+}
+
+function iterateConnection(propValues, getValues, schema) {
+    const seenMap = new Map();
+    return propValues
+        .reject(value => seenMap.has(value.id))
+        .tap(value => seenMap.set(value.id))
+        .reject(value => value instanceof BuzzDeleted)
+        .map(value => getResult(value.id, schema, getValues))
+}
+
+function first(it, fallback) {
+    const {value, done} = it.next();
+    console.log('first', value, done, fallback)
+    console.log(done && (value === undefined) , fallback , value);
+    return done && (value === undefined) ? fallback : value;
+}
+
+PropDef.Types = Object.fromEntries([
+    "Last",
+    "List",
+    "Unique",
+    "Reverse",
+    "number",
+    "string",
+    "boolean",
+].map(t => [t, Symbol(t)]));

@@ -1,9 +1,20 @@
 import InputForm from './inputform.js';
 import Buzz from "./buzz.js";
 import ChooseGame from "./ChooseGame.js";
+import { useState } from 'react';
 
 const GAME_STATES = Buzz.enumerate("Created", "Ongoing", "Finished");
 function App(props) {
+    let stepper = () => {};
+    function step(_cb) {
+        stepper = _cb;
+
+    }
+    const button = <button onClick={()=>stepper()}> Step </button>;
+    return <div>{button} <SubApp buzz={props.buzz} step={step} /></div>
+}
+
+function SubApp(props) {
     const useBuzz = props.buzz.useBuzz;
     const [player, setPlayer] = useBuzz({name: "", ready: false});
     const gameSchema = {
@@ -11,17 +22,33 @@ function App(props) {
     const [games, setGames] = useBuzz({id: "CELEBRITY", all: gameSchema});
     const [chooser, setChooser] = useBuzz({chosen: Buzz.last(gameSchema)});
 
+    const chosen = chooser.chosen;
+    /*
+    props.step(() => {
+        if (!player.ready) {
+            setPlayer({name: 'k3f', ready: true});
+            console.log('dioin', player)
+            return
+        }
+
+        const id = setGames({all: {name: "playroom"}});
+        setChooser({chosen: {id}});
+    });
+    */
+
+    console.log('asking about player', player.ready)
     if (!player.ready) {
         return <InputForm label="Player: "
             onSubmit={name => {
                 setPlayer({name, ready:true})}} />; }
     
-    const chosen = chooser.chosen;
     if (!chosen || chosen.state === GAME_STATES.Finished) {
         return <ChooseGame games={games} choose={id => setChooser({chosen: {id}})} player={player} 
              addGame={name=>setGames({all: {name}})} buzz={props.buzz} />
     }
 
+    props.buzz.debug();
+    console.log('chosss', chosen, chosen.name)
     const setName = name => setChooser({chosen: {id: chosen.id, name}});
     return <GamePlay game={chosen} setName={setName} player={player}/>
 }
