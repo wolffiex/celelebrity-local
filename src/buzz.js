@@ -2,7 +2,7 @@ import { useState } from 'react';
 var wu = require("wu");
 
 function newKey() {
-    return btoa(Math.random());
+    return btoa(Math.random()).slice(-8);
 }
 
 function node() {
@@ -24,18 +24,19 @@ function node() {
         const getValues = id => valuesCache.get(id, invalidate);
 
         function writer(values) {
-            console.log('writer called', values)
             let setObj = {};
             function set(k, v) {
                 setObj[k] = v;
             }
+            let subId = null;
             for (const [propName, propValue] of Object.entries(values)){
                 const propDef = schema.get(propName);
-                console.log(propName, propDef)
-                console.log(id, propName, propValue, propDef.isAssoc());
                 if (propDef.isAssoc()) {
-                    const subId = newKey();
-                    console.log('WHHH', propName, subId, propValue)
+                    if ('id' in propValue) {
+                        subId = propValue.id
+                    } else { 
+                        subId = newKey();
+                    }
                     valuesCache.append(subId, propValue);
                     set(propName, {id: subId});
                 } else {
@@ -43,11 +44,10 @@ function node() {
                 }
             }
             valuesCache.append(id, setObj);
-            debug();
+            return subId;
         }
 
         const result = getResult(id, schema, getValues);
-        console.log('useBuzz', id, result)
         return [result, writer];
     }
 
@@ -106,12 +106,14 @@ function createValuesCache() {
 
     let currentChunk = []; //list of key, id, values
     let chunks = [];
+    /*
     function receiveExternalChunk(chunk) {
         chunks = [currentChunk, chunk, ...chunks];
         currentChunk = [];
         //for entry in chunk, notify
         wu(chunk).pluck('id').forEach(notify);
     }
+    */
 
     function get(id, invalidate) {
         const oldCallback = callbackMap.get(id);
@@ -120,7 +122,6 @@ function createValuesCache() {
             oldCallback && oldCallback();
         });
 
-        const log = wu.flatten(chunks);
         return getEntries()
             .filter(entry => entry.id === id)
             .pluck('values');
@@ -130,7 +131,7 @@ function createValuesCache() {
     function getEntries(since) {
         const log = wu.flatten(chunks);
         return wu.chain(currentChunk, log)
-            .takeWhile(entry => entry.key != since);
+            .takeWhile(entry => entry.key !== since);
     }
 
     function notify(id) {
@@ -231,8 +232,6 @@ function iterateConnection(propValues, getValues, schema) {
 
 function first(it, fallback) {
     const {value, done} = it.next();
-    console.log('first', value, done, fallback)
-    console.log(done && (value === undefined) , fallback , value);
     return done && (value === undefined) ? fallback : value;
 }
 

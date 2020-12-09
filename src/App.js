@@ -23,20 +23,16 @@ function SubApp(props) {
     const [chooser, setChooser] = useBuzz({chosen: Buzz.last(gameSchema)});
 
     const chosen = chooser.chosen;
-    /*
     props.step(() => {
         if (!player.ready) {
             setPlayer({name: 'k3f', ready: true});
-            console.log('dioin', player)
             return
         }
 
         const id = setGames({all: {name: "playroom"}});
         setChooser({chosen: {id}});
     });
-    */
 
-    console.log('asking about player', player.ready)
     if (!player.ready) {
         return <InputForm label="Player: "
             onSubmit={name => {
@@ -47,8 +43,6 @@ function SubApp(props) {
              addGame={name=>setGames({all: {name}})} buzz={props.buzz} />
     }
 
-    props.buzz.debug();
-    console.log('chosss', chosen, chosen.name)
     const setName = name => setChooser({chosen: {id: chosen.id, name}});
     return <GamePlay game={chosen} setName={setName} player={player}/>
 }
