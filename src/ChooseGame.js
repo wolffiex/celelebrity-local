@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import InputForm from './inputform.js';
+import Buzz from './buzz.js';
 
 function ChooseGame(props) {
+    const useBuzz = props.buzz.useBuzz;
+    const roomSchema = {name: ""};
+    const [rooms, setRooms] = useBuzz({
+        myRooms: Buzz.index(roomSchema), 
+        all: Buzz.constant("CELEBRITY")});
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
@@ -24,6 +30,7 @@ function ChooseGame(props) {
         props.choose(id);
     }
 
+    //console.log('all rooms', rooms, rooms.all)
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
@@ -36,8 +43,8 @@ function ChooseGame(props) {
         </form>;
 
     function submitNewGame(name) {
-        props.addGame(name);
         setCreating(false);
+        rooms.myRooms.append({name});
     }
     const createGameForm = !isCreating ? null :
         <InputForm onSubmit={submitNewGame} label="Game name: " />;

@@ -1,7 +1,6 @@
 import InputForm from './inputform.js';
 import Buzz from "./buzz.js";
 import ChooseGame from "./ChooseGame.js";
-import { useState } from 'react';
 
 const GAME_STATES = Buzz.enumerate("Created", "Ongoing", "Finished");
 function App(props) {
@@ -17,6 +16,15 @@ function App(props) {
 function SubApp(props) {
     const useBuzz = props.buzz.useBuzz;
     const [player, setPlayer] = useBuzz({name: "", ready: false});
+    // new rules: you can only write to objects you created
+/*
+    const [rooms, setRooms] = useBuzz({name: "", all: Buzz.constant("CELEBRITY")});
+    const [game, setGame] = useBuzz({
+        room: Buzz.last(rooms.schema),
+        state: GAME_STATES.Created,
+        players: player.schema});
+  
+*/
     const gameSchema = {
         name: "", players: player.schema, state: GAME_STATES.Created};
     const [games, setGames] = useBuzz({id: "CELEBRITY", all: gameSchema});

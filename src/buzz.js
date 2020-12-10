@@ -98,7 +98,31 @@ function last(schema) {
     return new BuzzLast(schema);
 }
 
-const Buzz = {node, enumerate, last, key: newKey};
+function constant(id) {
+    return new Constant(id);
+}
+
+function index(schema) {
+    return new Index(schema);
+}
+
+class Constant {
+    constructor(id) {
+        this._id = id;
+    }
+    get id() {
+        return this._id
+    }
+}
+
+class Index{
+    constructor(schemaOr_schema) {
+        Object.defineProperty(this, 'schema', 
+            {value: makeSchema(schemaOr_schema), writeable: false});
+    }
+}
+
+const Buzz = {node, enumerate, last, key: newKey, constant, index};
 export default Buzz;
 
 function createValuesCache() {
@@ -149,7 +173,7 @@ function createValuesCache() {
     return {get, append, getEntries};
 }
 
-function BuzzDeleted() {
+class BuzzDeleted {
 }
 
 function Schema(_schema) {
@@ -185,11 +209,19 @@ function PropDef(schemaPropValue) {
     if (schemaPropValue instanceof BuzzLast) {
         type = PropDef.Types.Last;
         subSchema = makeSchema(schemaPropValue.schema);
+    } else if (schemaPropValue instanceof Index) {
+        type = PropDef.Types.Index;
+    } else if (schemaPropValue instanceof Constant) {
+        type = PropDef.Types.Constant;
     } else if (schemaPropValue instanceof Object) {
         type = PropDef.Types.List;
         subSchema = makeSchema(schemaPropValue);
     } else {
         type = PropDef.Types[typeof schemaPropValue];
+    }
+
+    if (type == undefined) {
+        throw new Error("Unrecognized type for", schemaPropValue);
     }
 
     this.type = type;
@@ -198,9 +230,16 @@ function PropDef(schemaPropValue) {
     this.isAssoc = isAssoc
     this.define = (getPropValues, getValues) => {
         let get;
-        if (isAssoc()) {
+        if (type === PropDef.Types.Constant) {
+            // this creates an index that points back to every node with this schema
+            let inIn = new IndexInstance();
+            console.log('inin', inIn, inIn.reverse(), inIn.reverse().map)
+            return inIn.reverse();
+        } else if (isAssoc()) {
             const connection = () => iterateConnection(getPropValues(), getValues, subSchema);
             switch (type) {
+                case PropDef.Types.Index:
+                    throw new Error("here at le");
                 case PropDef.Types.Last:
                     get = () => first(connection(), null)
                     break;
@@ -236,6 +275,8 @@ function first(it, fallback) {
 }
 
 PropDef.Types = Object.fromEntries([
+    "Index",
+    "Constant",
     "Last",
     "List",
     "Unique",
@@ -244,3 +285,14 @@ PropDef.Types = Object.fromEntries([
     "string",
     "boolean",
 ].map(t => [t, Symbol(t)]));
+
+class IndexInstance {
+    constructor() {
+    }
+    reverse() {
+        return new IndexInstance();
+    }
+    map() {
+        console.log('whoa')
+    }
+}
