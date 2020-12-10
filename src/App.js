@@ -1,5 +1,5 @@
 import InputForm from './inputform.js';
-import Buzz from "./buzz.js";
+import Buzz from "./buzz";
 import ChooseGame from "./ChooseGame.js";
 
 const GAME_STATES = Buzz.enumerate("Created", "Ongoing", "Finished");

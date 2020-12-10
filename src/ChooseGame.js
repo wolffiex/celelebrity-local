@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import InputForm from './inputform.js';
-import Buzz from './buzz.js';
+import Buzz from './buzz';
 
 function ChooseGame(props) {
     const useBuzz = props.buzz.useBuzz;
