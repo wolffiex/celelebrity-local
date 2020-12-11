@@ -1,5 +1,5 @@
 import { useState } from 'react';
-var wu = require("wu");
+import createValuesCache from './ValuesCache.js';
 
 function newKey() {
     return btoa(Math.random()).slice(-8);
@@ -7,7 +7,7 @@ function newKey() {
 
 function node() {
     const nodeKey = newKey();
-    const valuesCache = createValuesCache();
+    const valuesCache = new createValuesCache(() => newKey());
 
     function debug() {
         console.log("BUZZ", nodeKey);
@@ -125,54 +125,6 @@ class Index{
 const Buzz = {node, enumerate, last, key: newKey, constant, index};
 export default Buzz;
 
-function createValuesCache() {
-    let callbackMap = new Map();
-
-    let currentChunk = []; //list of key, id, values
-    let chunks = [];
-    /*
-    function receiveExternalChunk(chunk) {
-        chunks = [currentChunk, chunk, ...chunks];
-        currentChunk = [];
-        //for entry in chunk, notify
-        wu(chunk).pluck('id').forEach(notify);
-    }
-    */
-
-    function get(id, invalidate) {
-        const oldCallback = callbackMap.get(id);
-        callbackMap.set(id, function() {
-            invalidate();
-            oldCallback && oldCallback();
-        });
-
-        return getEntries()
-            .filter(entry => entry.id === id)
-            .pluck('values');
-    }
-
-
-    function getEntries(since) {
-        const log = wu.flatten(chunks);
-        return wu.chain(currentChunk, log)
-            .takeWhile(entry => entry.key !== since);
-    }
-
-    function notify(id) {
-        const callback = callbackMap.get(id);
-        callbackMap.delete(id);
-        callback && callback();
-    }
-
-    function append(id, values) {
-        const key = newKey();
-        currentChunk.unshift({id, values, key});
-        notify(id);
-    }
-
-    return {get, append, getEntries};
-}
-
 class BuzzDeleted {
 }
 
@@ -287,6 +239,9 @@ PropDef.Types = Object.fromEntries([
 ].map(t => [t, Symbol(t)]));
 
 class IndexInstance {
+    append() {
+        return null();
+    }
     constructor() {
     }
     reverse() {
