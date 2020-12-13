@@ -21,34 +21,31 @@ function node() {
         const schema = makeSchema(_schema);
         const [{id}, update] = useState({id: newKey()});
         const invalidate = () => update({id});
-        const getValues = id => valuesCache.get(id, invalidate);
+        const snapshot = valuesCache.getSnapshot(invalidate);
 
-        function writer(values) {
-            let setObj = {};
-            function set(k, v) {
-                setObj[k] = v;
-            }
-            let subId = null;
-            for (const [propName, propValue] of Object.entries(values)){
-                const propDef = schema.get(propName);
-                if (propDef.isAssoc()) {
-                    if ('id' in propValue) {
-                        subId = propValue.id
-                    } else { 
-                        subId = newKey();
-                    }
-                    valuesCache.append(subId, propValue);
-                    set(propName, {id: subId});
-                } else {
-                    set(propName, propValue);
-                }
-            }
-            valuesCache.append(id, setObj);
-            return subId;
-        }
+        const write = (name, valueOrObj) => writeEntry(id, schema, name, valueOrObj);
 
-        const result = getResult(id, schema, getValues);
-        return [result, writer];
+        const result = getResult(id, schema, snapshot);
+        return [result, write];
+    }
+
+    function writeEntry(id, schema, name, valueOrObj) {
+        const propDef = schema.get(name);
+        return propDef.isAssoc ?
+            makeRef(id, name, propDef, valueOrObj) :
+            valuesCache.appendValue(id, name, valueOrObj);
+    }
+
+    function makeRef(id, name, propDef, valueOrObj) {
+        const refId = isRef(valueOrObj) ? valueOrObj : addRef(propDef.schema, valueOrObj);
+        return valuesCache.appendRef(id, name, refId);
+    }
+
+    function addRef(schema, values) {
+        const id = newKey();
+        Object.entries(values)
+            .forEach(([name, valueOrObj]) => writeEntry(id, schema, name, valueOrObj));
+        return id;
     }
 
     return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};
@@ -57,7 +54,7 @@ function node() {
 function assert(x, msg) {
     if (!x) throw( new Error(msg));
 }
-function getResult(id, schema, getValues) {
+function getResult(id, schema, snapshot) {
     assert(schema instanceof Schema, "him dk");
     let result = {
         get id() {
@@ -68,9 +65,9 @@ function getResult(id, schema, getValues) {
         }
     };
 
-    for (const [propName, propDef] of schema.entries(id, getValues)) {
-        Object.defineProperty(result, propName, propDef);
-    }
+    schema.entries(id, snapshot).forEach(({name, def}) =>
+        Object.defineProperty(result, name, def));
+        
     return result;
 }
 
@@ -130,23 +127,18 @@ class BuzzDeleted {
 
 function Schema(_schema) {
     if (_schema instanceof Schema) console.error("FIx this");
-    function get(propName) {
-        return propName in _schema ? 
-            new PropDef(_schema[propName]) : null;
+    function get(name) {
+        if (! (name in _schema)) {
+            console.error("Property not found", name, _schema);
+            throw new Error("Property not found");
+        }
+        return new PropDef(name, _schema[name]);
     }
 
     this.get = get
-    this.matches = entry => {
-        //🤔
-    }
-    this.entries = (id, getValues) => {
-        function getGetPropValues(propName) {
-            return function() {
-                return getValues(id).filter(e => propName in e).pluck(propName);
-            }
-        }
-        return Object.keys(_schema).map(propName => 
-            [propName, get(propName).define(getGetPropValues(propName), getValues)]);
+    this.entries = (id, snapshot) => {
+        return Object.keys(_schema).map(name => 
+            ({name, def: get(name).define(id, snapshot)}));
     }
 }
 
@@ -155,7 +147,7 @@ function makeSchema(schemaOr_schema) {
     else return new Schema(schemaOr_schema);
 }
 
-function PropDef(schemaPropValue) {
+function PropDef(name, schemaPropValue) {
     let type = null;
     let subSchema = null;
     if (schemaPropValue instanceof BuzzLast) {
@@ -178,32 +170,33 @@ function PropDef(schemaPropValue) {
 
     this.type = type;
 
-    const isAssoc = () => !!subSchema;
-    this.isAssoc = isAssoc
-    this.define = (getPropValues, getValues) => {
+    const isAssoc = !!subSchema
+    this.isAssoc = isAssoc;
+    this.define = (id, snapshot) => {
         let get;
         if (type === PropDef.Types.Constant) {
             // this creates an index that points back to every node with this schema
             let inIn = new IndexInstance();
             console.log('inin', inIn, inIn.reverse(), inIn.reverse().map)
             return inIn.reverse();
-        } else if (isAssoc()) {
-            const connection = () => iterateConnection(getPropValues(), getValues, subSchema);
+        } else if (isAssoc) {
+            const toResult = () => snapshot.getRefs(id, name)
+                .map(refId => getResult(refId, subSchema, snapshot));
             switch (type) {
                 case PropDef.Types.Index:
                     throw new Error("here at le");
                 case PropDef.Types.Last:
-                    get = () => first(connection(), null)
+                    get = () => first(toResult(), null);
                     break;
                 case PropDef.Types.List:
-                    get = connection;
+                    get = () => toResult();
                     break;
                 default:
                     throw new Error('Unexpected');
             }
         } else {
             get = () => {
-                return first(getPropValues(), schemaPropValue);
+                return first(snapshot.getValues(id, name), schemaPropValue);
             }
         }
         return {get, enumerable: true};
@@ -212,13 +205,13 @@ function PropDef(schemaPropValue) {
     return typeof propDef;
 }
 
-function iterateConnection(propValues, getValues, schema) {
+function iterateConnection(propValues, snapshot, schema) {
     const seenMap = new Map();
     return propValues
         .reject(value => seenMap.has(value.id))
         .tap(value => seenMap.set(value.id))
         .reject(value => value instanceof BuzzDeleted)
-        .map(value => getResult(value.id, schema, getValues))
+        .map(value => getResult(value.id, schema, snapshot))
 }
 
 function first(it, fallback) {
@@ -242,12 +235,14 @@ class IndexInstance {
     append() {
         return null();
     }
-    constructor() {
-    }
     reverse() {
         return new IndexInstance();
     }
     map() {
         console.log('whoa')
     }
+}
+
+function isRef(valueOrRef) {
+    if (typeof valueOrObj == "string") return true;
 }

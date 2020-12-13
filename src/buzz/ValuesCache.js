@@ -1,8 +1,6 @@
 var wu = require("wu");
 
 function createValuesCache(sign) {
-    let callbackMap = new Map();
-
     let currentChunk = []; //list of key, id, values
     let chunks = [];
     /*
@@ -29,7 +27,7 @@ function createValuesCache(sign) {
     function callTrackers(identifier) {
         allTrackers = allTrackers
             .map(tracker => {
-                if (tracker.acccess.has(identifier)) {
+                if (tracker.access.has(identifier)) {
                     tracker.invalidate();
                     return null;
                 } else {
@@ -47,11 +45,13 @@ function createValuesCache(sign) {
 
     const isRefType = entry => entry.type === Types.ref || entry.type === Types.refDelete;
     function appendEntry(entry) {
+        const version = sign(entry);
         currentChunk = [entry].concat(currentChunk);
         callTrackers(entryIdentifier(entry.id, entry.name));
         if (isRefType(entry)) {
             callTrackers(indexIdentifier(entry.name, entry.refId));
         }
+        return version;
     }
 
     function getSnapshot(invalidate) {
@@ -66,78 +66,50 @@ function createValuesCache(sign) {
             return it
                 .filter(entry => isRefType(entry) && !seen.has(entry.refId))
                 .tap(entry => seen.add(entry.refId))
-                .filter(entry => entry.type == Types.refDelete)
+                .filter(entry => entry.type === Types.refDelete)
         }
 
-        function getValues(id, name) { 
-            tracker.entryAccess(id, name);
-            get(id, name)
-                .reject(isRefType)
-                .pluck("value");
-        }
+        return {
+            getValues : function (id, name) { 
+                tracker.entryAccess(id, name);
+                return get(id, name)
+                    .reject(isRefType)
+                    .pluck("value");
+            },
 
-        function getRefs(id, name) { 
-            tracker.entryAccess(id, name);
-            return refChain(get(id, name)).pluck("refId");
-        }
+            getRefs: function(id, name) { 
+                tracker.entryAccess(id, name);
+                return refChain(get(id, name)).pluck("refId");
+            },
 
-        //iterate over ids that point to the refIds in refIdIterator with prop[name]
-        function index(name, refIdIterator) {
-            return wu(refIdIterator)
-                .tap(id2 => tracker.indexAccess(name, id2))
-                .map(id2 => 
-                    refChain(entries().filter(entry => entry.name == name))
-                        .filter(entry => entry.refId === id2)
-                        .pluck("id"))
-                .flatten(true)
-                .unique()
-        }
+            //iterate over ids that point to the refIds in refIdIterator with prop[name]
+            index: function (name, refIdIterator) {
+                return wu(refIdIterator)
+                    .tap(id2 => tracker.indexAccess(name, id2))
+                    .map(id2 => 
+                        refChain(entries().filter(entry => entry.name === name))
+                            .filter(entry => entry.refId === id2)
+                            .pluck("id"))
+                    .flatten(true)
+                    .unique()
+            },
 
-        function appendValue(id, name, value) {
-            appendEntry({id, name, value, type: Types.value});
-        }
-
-        function appendRef(id, name, refId) {
-            appendEntry({id, name, refId, type: Types.ref});
-        }
-
-        function appendRefDelete(id, name, refId) {
-            appendEntry({id, name, refId, type: Types.refDelete});
-        }
+        };
     }
 
-    function get(id, invalidate) {
-        const oldCallback = callbackMap.get(id);
-        callbackMap.set(id, function() {
-            invalidate();
-            oldCallback && oldCallback();
-        });
+    return {getSnapshot,
+        appendValue: function (id, name, value) {
+            return appendEntry({id, name, value, type: Types.value});
+        },
 
-        return getEntries()
-            .filter(entry => entry.id === id)
-            .pluck('values');
-    }
+        appendRef: function (id, name, refId) {
+            return appendEntry({id, name, refId, type: Types.ref});
+        },
 
-
-    function getEntries(since) {
-        const log = wu.flatten(chunks);
-        return wu.chain(currentChunk, log)
-            .takeWhile(entry => entry.version !== since);
-    }
-
-    function notify(id) {
-        const callback = callbackMap.get(id);
-        callbackMap.delete(id);
-        callback && callback();
-    }
-
-    function append(id, values) {
-        const version = sign(id, values);
-        currentChunk.unshift({id, values, version});
-        notify(id);
-    }
-
-    return {get, append, getEntries};
+        appendRefDelete: function (id, name, refId) {
+            return appendEntry({id, name, refId, type: Types.refDelete});
+        },
+    };
 }
 
 export default createValuesCache;
