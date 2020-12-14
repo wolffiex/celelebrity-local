@@ -44,7 +44,8 @@ function ChooseGame(props) {
 
     function submitNewGame(name) {
         setCreating(false);
-        rooms.myRooms.append({name});
+        //rooms.myRooms.append({name});
+        props.addGame(name);
     }
     const createGameForm = !isCreating ? null :
         <InputForm onSubmit={submitNewGame} label="Game name: " />;
