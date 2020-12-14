@@ -39,7 +39,8 @@ function SubApp(props) {
         }
 
         const id = setGames('all', {name: "playroom"});
-        setChooser({chosen: {id}});
+        setChooser('chosen', id);
+        props.buzz.debug();
     });
 
     if (!player.ready) {

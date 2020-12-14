@@ -66,7 +66,7 @@ function createValuesCache(sign) {
             return it
                 .filter(entry => isRefType(entry) && !seen.has(entry.refId))
                 .tap(entry => seen.add(entry.refId))
-                .filter(entry => entry.type === Types.refDelete)
+                .reject(entry => entry.type === Types.refDelete)
         }
 
         return {
@@ -109,6 +109,11 @@ function createValuesCache(sign) {
         appendRefDelete: function (id, name, refId) {
             return appendEntry({id, name, refId, type: Types.refDelete});
         },
+
+        debug : function() {
+        wu.zip( wu.flatten(true, [currentChunk, ...chunks]), wu.count())
+            .forEach(([entry, n]) => console.log(n, entry));
+        }
     };
 }
 

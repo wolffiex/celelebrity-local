@@ -11,10 +11,7 @@ function node() {
 
     function debug() {
         console.log("BUZZ", nodeKey);
-        let n = 0;
-        for (let entry of valuesCache.getEntries()) {
-            console.log(n++, entry.id, entry.values);
-        }
+        valuesCache.debug();
     }
 
     function useBuzz(_schema) {
@@ -37,8 +34,9 @@ function node() {
     }
 
     function makeRef(id, name, propDef, valueOrObj) {
-        const refId = isRef(valueOrObj) ? valueOrObj : addRef(propDef.schema, valueOrObj);
-        return valuesCache.appendRef(id, name, refId);
+        const refId = isRef(valueOrObj) ? valueOrObj : addRef(propDef.subSchema, valueOrObj);
+        valuesCache.appendRef(id, name, refId);
+        return refId;
     }
 
     function addRef(schema, values) {
@@ -164,20 +162,20 @@ function PropDef(name, schemaPropValue) {
         type = PropDef.Types[typeof schemaPropValue];
     }
 
-    if (type == undefined) {
+    if (type === undefined) {
         throw new Error("Unrecognized type for", schemaPropValue);
     }
 
     this.type = type;
 
     const isAssoc = !!subSchema
+    this.subSchema = subSchema;
     this.isAssoc = isAssoc;
     this.define = (id, snapshot) => {
         let get;
         if (type === PropDef.Types.Constant) {
             // this creates an index that points back to every node with this schema
             let inIn = new IndexInstance();
-            console.log('inin', inIn, inIn.reverse(), inIn.reverse().map)
             return inIn.reverse();
         } else if (isAssoc) {
             const toResult = () => snapshot.getRefs(id, name)
@@ -239,10 +237,10 @@ class IndexInstance {
         return new IndexInstance();
     }
     map() {
-        console.log('whoa')
+        //console.log('whoa')
     }
 }
 
 function isRef(valueOrRef) {
-    if (typeof valueOrObj == "string") return true;
+    return typeof valueOrRef === "string";
 }
