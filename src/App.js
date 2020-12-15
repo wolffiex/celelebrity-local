@@ -18,10 +18,10 @@ function SubApp(props) {
     const [player, setPlayer] = useBuzz({name: "", ready: false});
     // new rules: you can only write to objects you created
     const gameSchema = {
-        room: {name:""}, players: player.schema, state: GAME_STATES.Created};
+        room: Buzz.last({name:""}), players: player.schema, state: GAME_STATES.Created};
     const [game, setGame] = useBuzz(gameSchema);
 
-    const chosenRoom = game.room.last();
+    const chosenRoom = game.room;
     props.step(() => {
         if (!player.ready) {
             setPlayer('name', 'k3f');
@@ -45,9 +45,9 @@ function SubApp(props) {
 }
 
 function GamePlay(props) {
-    console.log('gamep l', props.game.room.last())
+    console.log('gamep l', props.game.room)
     return <div>
-        <h2>This is game {props.game.room.last().name}</h2>
+        <h2>This is game {props.game.room.name}</h2>
     </div>;
 }
 

@@ -35,13 +35,12 @@ function PropDef(name, schemaPropValue, ssschema) {
     if (schemaPropValue instanceof Object && SchemaTypeSymbol in schemaPropValue) {
         switch (schemaPropValue[SchemaTypeSymbol]) {
             case SchemaType.Constant:
-                console.log('wjuu', schemaPropValue)
                 type = PropDef.Types.Constant;
                 subSchema = makeSchema(ssschema);
                 break;
             case SchemaType.Last:
                 type = PropDef.Types.Last;
-                subSchema = makeSchema(schemaPropValue.schema);
+                subSchema = makeSchema(schemaPropValue.args[0]);
                 break;
             default:
                 throw new Error("Unrecognized schema type", schemaPropValue[SchemaTypeSymbol]);
