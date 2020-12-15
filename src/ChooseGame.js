@@ -6,7 +6,7 @@ function ChooseGame(props) {
     const useBuzz = props.buzz.useBuzz;
     const roomSchema = {name: ""}; 
     const [rooms, setRooms] = useBuzz({
-        myRooms: Buzz.index(roomSchema),
+        myRooms: roomSchema,
         all: Buzz.constant("CELEBRITY")});
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);

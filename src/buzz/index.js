@@ -105,10 +105,6 @@ function constant(id) {
     return new Constant(id);
 }
 
-function index(schema) {
-    return new Index(schema);
-}
-
 class Constant {
     constructor(id) {
         this._id = id;
@@ -118,14 +114,7 @@ class Constant {
     }
 }
 
-class Index{
-    constructor(schemaOr_schema) {
-        Object.defineProperty(this, 'schema', 
-            {value: makeSchema(schemaOr_schema), writeable: false});
-    }
-}
-
-const Buzz = {node, enumerate, last, key: newKey, constant, index};
+const Buzz = {node, enumerate, last, key: newKey, constant};
 export default Buzz;
 
 function Schema(_schema) {
@@ -165,9 +154,6 @@ function PropDef(name, schemaPropValue, ssschema) {
     if (schemaPropValue instanceof BuzzLast) {
         type = PropDef.Types.Last;
         subSchema = makeSchema(schemaPropValue.schema);
-    } else if (schemaPropValue instanceof Index) {
-        type = PropDef.Types.Index;
-        subSchema = makeSchema(schemaPropValue.schema);
     } else if (schemaPropValue instanceof Constant) {
         subSchema = makeSchema(ssschema);
         type = PropDef.Types.Constant;
@@ -206,13 +192,6 @@ function PropDef(name, schemaPropValue, ssschema) {
             const toResult = () => snapshot.getRefs([id], name)
                 .map(refId => getResult(refId, subSchema, snapshot));
             switch (type) {
-                case PropDef.Types.Index:
-                    get = () => {
-                        const result = toResult();
-                        result.index = n => snapshot.index(n, snapshot.getRefs([id], name));
-                        return result;
-                    }
-                    break;
                 case PropDef.Types.Last:
                     get = () => first(toResult(), null);
                     break;
@@ -243,12 +222,9 @@ function first(it, fallback) {
 }
 
 PropDef.Types = Object.fromEntries([
-    "Index",
     "Constant",
     "Last",
     "List",
-    "Unique",
-    "Reverse",
     "number",
     "string",
     "boolean",
