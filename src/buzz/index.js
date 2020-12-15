@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
 import {makeSchema, SchemaType} from './Schema.js';
+import {getResult} from './Obj.js';
 
 function newKey() {
     return btoa(Math.random()).slice(-8);
@@ -61,23 +62,6 @@ function node() {
 function assert(x, msg) {
     if (!x) throw( new Error(msg));
 }
-
-function getResult(id, schema, snapshot) {
-    let result = {
-        get id() {
-            return id;
-        },
-        get schema() {
-            return schema;
-        }
-    };
-
-    schema.entries(id, snapshot).forEach(({name, def}) =>
-        Object.defineProperty(result, name, def));
-        
-    return result;
-}
-
 
 function enumerate(...variants) {
     return new BuzzEnum(variants);

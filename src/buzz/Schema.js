@@ -1,3 +1,5 @@
+import {getResult} from './Obj.js';
+
 function Schema(defOrSchema) {
     if (defOrSchema instanceof Schema) console.error("FIx this");
     function get(name) {
@@ -116,22 +118,6 @@ PropDef.Types = Object.fromEntries([
     "string",
     "boolean",
 ].map(t => [t, Symbol(t)]));
-
-function getResult(id, schema, snapshot) {
-    let result = {
-        get id() {
-            return id;
-        },
-        get schema() {
-            return schema;
-        }
-    };
-
-    schema.entries(id, snapshot).forEach(({name, def}) =>
-        Object.defineProperty(result, name, def));
-        
-    return result;
-}
 
 export function SchemaType(...args) {
     const o = new SchemaTypeClass(...args);
