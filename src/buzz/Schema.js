@@ -19,7 +19,7 @@ function Schema(_schema) {
             .map(name =>({name, propDef: this.get(name)}))
             .filter(({propDef}) => propDef.type === PropDef.Types.Constant)
             //gross
-            .forEach(({name, propDef}) => writeEntry(id, this, name, propDef.schemaPropValue.id))
+            .forEach(({name, propDef}) => writeEntry(id, this, name, propDef.schemaPropValue.args[0]))
 
     }
 }
@@ -34,6 +34,11 @@ function PropDef(name, schemaPropValue, ssschema) {
     let subSchema = null;
     if (schemaPropValue instanceof Object && SchemaTypeSymbol in schemaPropValue) {
         switch (schemaPropValue[SchemaTypeSymbol]) {
+            case SchemaType.Constant:
+                console.log('wjuu', schemaPropValue)
+                type = PropDef.Types.Constant;
+                subSchema = makeSchema(ssschema);
+                break;
             case SchemaType.Last:
                 type = PropDef.Types.Last;
                 subSchema = makeSchema(schemaPropValue.schema);
@@ -41,9 +46,6 @@ function PropDef(name, schemaPropValue, ssschema) {
             default:
                 throw new Error("Unrecognized schema type", schemaPropValue[SchemaTypeSymbol]);
         }
-    } else if (schemaPropValue instanceof Constant) {
-        subSchema = makeSchema(ssschema);
-        type = PropDef.Types.Constant;
     } else if (schemaPropValue instanceof Object) {
         type = PropDef.Types.List;
         subSchema = makeSchema(schemaPropValue);
@@ -72,7 +74,7 @@ function PropDef(name, schemaPropValue, ssschema) {
         let get;
         if (type === PropDef.Types.Constant) {
             // this creates an index that points back to every node with this schema
-            get = () => wrapIndex(snapshot.index(name, [schemaPropValue.id]),
+            get = () => wrapIndex(snapshot.index(name, [schemaPropValue.args[0]]),
                 refId => getResult(refId, subSchema, snapshot), snapshot);
         } else if (isAssoc) {
             const toResult = () => snapshot.getRefs([id], name)
@@ -132,15 +134,6 @@ function getResult(id, schema, snapshot) {
     return result;
 }
 
-export class Constant {
-    constructor(id) {
-        this._id = id;
-    }
-    get id() {
-        return this._id
-    }
-}
-
 const SchemaTypeSymbol = Symbol('SchemaType');
 export function SchemaType(type, ...args) {
     const o = {[SchemaTypeSymbol]:type, args};
@@ -149,3 +142,4 @@ export function SchemaType(type, ...args) {
 }
 
 SchemaType.Last = Symbol('SchemaType.Last');
+SchemaType.Constant = Symbol('SchemaType.Constant');

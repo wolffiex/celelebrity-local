@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
-import {makeSchema, Constant, SchemaType} from './Schema.js';
+import {makeSchema, SchemaType} from './Schema.js';
 
 function newKey() {
     return btoa(Math.random()).slice(-8);
@@ -98,7 +98,7 @@ function last(schemaDef) {
 }
 
 function constant(id) {
-    return new Constant(id);
+    return SchemaType(SchemaType.Constant, id);
 }
 
 function isRef(valueOrRef) {
