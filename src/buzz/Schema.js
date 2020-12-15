@@ -1,21 +1,21 @@
-function Schema(_schema) {
-    if (_schema instanceof Schema) console.error("FIx this");
+function Schema(defOrSchema) {
+    if (defOrSchema instanceof Schema) console.error("FIx this");
     function get(name) {
-        if (! (name in _schema)) {
+        if (! (name in defOrSchema)) {
             throw new Error("Property not found");
         }
-        return new PropDef(name, _schema[name], _schema);
+        return new PropDef(name, defOrSchema[name], defOrSchema);
     }
 
     this.get = get
     this.entries = (id, snapshot) => {
-        return Object.keys(_schema).map(name => 
+        return Object.keys(defOrSchema).map(name => 
             ({name, def: get(name).define(id, snapshot)}));
     }
 
-    this.debug = () => _schema;
+    this.debug = () => defOrSchema;
     this.writeConstants = (id, writeEntry)  => {
-        Object.keys(_schema)
+        Object.keys(defOrSchema)
             .map(name =>({name, propDef: this.get(name)}))
             .filter(({propDef}) => propDef.type === PropDef.Types.Constant)
             //gross
@@ -32,8 +32,8 @@ export function makeSchema(schemaOr_schema) {
 function PropDef(name, schemaPropValue, ssschema) {
     let type = null;
     let subSchema = null;
-    if (schemaPropValue instanceof Object && SchemaTypeSymbol in schemaPropValue) {
-        switch (schemaPropValue[SchemaTypeSymbol]) {
+    if (schemaPropValue instanceof SchemaTypeClass) {
+        switch (schemaPropValue.type) {
             case SchemaType.Constant:
                 type = PropDef.Types.Constant;
                 subSchema = makeSchema(ssschema);
@@ -43,7 +43,7 @@ function PropDef(name, schemaPropValue, ssschema) {
                 subSchema = makeSchema(schemaPropValue.args[0]);
                 break;
             default:
-                throw new Error("Unrecognized schema type", schemaPropValue[SchemaTypeSymbol]);
+                throw new Error("Unrecognized schema type", schemaPropValue.type);
         }
     } else if (schemaPropValue instanceof Object) {
         type = PropDef.Types.List;
@@ -133,12 +133,16 @@ function getResult(id, schema, snapshot) {
     return result;
 }
 
-const SchemaTypeSymbol = Symbol('SchemaType');
-export function SchemaType(type, ...args) {
-    const o = {[SchemaTypeSymbol]:type, args};
+export function SchemaType(...args) {
+    const o = new SchemaTypeClass(...args);
     Object.freeze(o);
     return o;
 }
+
+function SchemaTypeClass(type, ...args) {
+    this.type = type;
+    this.args = args;
+};
 
 SchemaType.Last = Symbol('SchemaType.Last');
 SchemaType.Constant = Symbol('SchemaType.Constant');
