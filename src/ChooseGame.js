@@ -29,6 +29,7 @@ function ChooseGame(props) {
         props.choose(id);
     }
 
+    //console.log([...rooms.all.map(aRooms => aRooms.myRooms).flatten(true)]);
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}

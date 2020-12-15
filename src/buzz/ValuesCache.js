@@ -48,8 +48,8 @@ function createValuesCache(sign) {
     function getSnapshot(invalidate) {
         const snapshotValues = currentChunk;
         const entries = () => wu(snapshotValues);
-        const get = (id, name) => entries()
-            .filter(entry => entry.name === name && entry.id === id)
+        const get = (ids, name) => entries()
+            .filter(entry => entry.name === name && ids.has(entry.id))
         const tracker = SnapshotTracker(invalidate);
 
         function refChain(it) {
@@ -63,14 +63,15 @@ function createValuesCache(sign) {
         return {
             getValues : function (id, name) { 
                 tracker.entryAccess(id, name);
-                return get(id, name)
+                return get(new Set([id]), name)
                     .reject(isRefType)
                     .pluck("value");
             },
 
-            getRefs: function(id, name) { 
-                tracker.entryAccess(id, name);
-                return refChain(get(id, name)).pluck("refId");
+            getRefs: function(idIterator, name) { 
+                const ids = new Set(idIterator);
+                ids.forEach(id => tracker.entryAccess(id, name));
+                return refChain(get(ids, name)).pluck("refId");
             },
 
             //iterate over ids that point to the refIds in refIdIterator with prop[name]
