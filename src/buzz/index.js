@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
-import {makeSchema, Constant, BuzzLast} from './Schema.js';
+import {makeSchema, Constant, SchemaType} from './Schema.js';
 
 function newKey() {
     return btoa(Math.random()).slice(-8);
@@ -61,6 +61,7 @@ function node() {
 function assert(x, msg) {
     if (!x) throw( new Error(msg));
 }
+
 function getResult(id, schema, snapshot) {
     let result = {
         get id() {
@@ -92,8 +93,8 @@ function BuzzEnumVariant(enumeration) {
     this.enumeration = enumeration;
 }
 
-function last(schema) {
-    return new BuzzLast(schema);
+function last(schemaDef) {
+    return SchemaType(SchemaType.Last, schemaDef);
 }
 
 function constant(id) {

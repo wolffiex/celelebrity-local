@@ -32,9 +32,15 @@ export function makeSchema(schemaOr_schema) {
 function PropDef(name, schemaPropValue, ssschema) {
     let type = null;
     let subSchema = null;
-    if (schemaPropValue instanceof BuzzLast) {
-        type = PropDef.Types.Last;
-        subSchema = makeSchema(schemaPropValue.schema);
+    if (schemaPropValue instanceof Object && SchemaTypeSymbol in schemaPropValue) {
+        switch (schemaPropValue[SchemaTypeSymbol]) {
+            case SchemaType.Last:
+                type = PropDef.Types.Last;
+                subSchema = makeSchema(schemaPropValue.schema);
+                break;
+            default:
+                throw new Error("Unrecognized schema type", schemaPropValue[SchemaTypeSymbol]);
+        }
     } else if (schemaPropValue instanceof Constant) {
         subSchema = makeSchema(ssschema);
         type = PropDef.Types.Constant;
@@ -56,7 +62,6 @@ function PropDef(name, schemaPropValue, ssschema) {
     this.subSchema = subSchema;
     this.isAssoc = isAssoc;
     function wrapIndex(index, getter, snapshot) {
-        //TODO: build set of index
         const result = index.map(getter);
         result.select = n => snapshot.getRefs(index, n)
             .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
@@ -136,8 +141,11 @@ export class Constant {
     }
 }
 
-export function BuzzLast(schema) {
-    Object.freeze(schema);
-    this.schema = schema;
+const SchemaTypeSymbol = Symbol('SchemaType');
+export function SchemaType(type, ...args) {
+    const o = {[SchemaTypeSymbol]:type, args};
+    Object.freeze(o);
+    return o;
 }
 
+SchemaType.Last = Symbol('SchemaType.Last');
