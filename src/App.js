@@ -17,29 +17,17 @@ function SubApp(props) {
     const useBuzz = props.buzz.useBuzz;
     const [player, setPlayer] = useBuzz({name: "", ready: false});
     // new rules: you can only write to objects you created
-/*
-    const [game, setGame] = useBuzz({
-        room: Buzz.last(rooms.schema),
-        state: GAME_STATES.Created,
-        players: player.schema});
-  
-*/
     const gameSchema = {
-        name: "", players: player.schema, state: GAME_STATES.Created};
-    const [games, setGames] = useBuzz({all_donotuse: gameSchema});
-    const [chooser, setChooser] = useBuzz({chosen: Buzz.last(gameSchema)});
+        room: {name:""}, players: player.schema, state: GAME_STATES.Created};
+    const [game, setGame] = useBuzz(gameSchema);
 
-    const chosen = chooser.chosen;
+    const chosenRoom = game.room.last();
     props.step(() => {
         if (!player.ready) {
             setPlayer('name', 'k3f');
             setPlayer('ready', true);
             return
         }
-
-        const id = setGames('all', {name: "playroom"});
-        setChooser('chosen', id);
-        props.buzz.debug();
     });
 
     if (!player.ready) {
@@ -48,17 +36,18 @@ function SubApp(props) {
                 setPlayer('name', name)
                 setPlayer('ready', true)}} />; }
     
-    if (!chosen || chosen.state === GAME_STATES.Finished) {
-        return <ChooseGame games={games} choose={id => setChooser('chosen', id)} player={player} 
-             addGame={name=>setGames('all', {name})} buzz={props.buzz} />
+    if (!chosenRoom) {
+        return <ChooseGame game={game} choose={id => setGame('room', id)}
+            player={player} buzz={props.buzz} />
     }
 
-    return <GamePlay game={chosen} player={player} />
+    return <GamePlay game={game} player={player} />
 }
 
 function GamePlay(props) {
+    console.log('gamep l', props.game.room.last())
     return <div>
-        <h2>This is game {props.game.name}</h2>
+        <h2>This is game {props.game.room.last().name}</h2>
     </div>;
 }
 

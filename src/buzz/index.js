@@ -195,6 +195,7 @@ function PropDef(name, schemaPropValue, ssschema) {
             .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
         return result;
     }
+
     this.define = (id, snapshot) => {
         let get;
         if (type === PropDef.Types.Constant) {
@@ -216,7 +217,11 @@ function PropDef(name, schemaPropValue, ssschema) {
                     get = () => first(toResult(), null);
                     break;
                 case PropDef.Types.List:
-                    get = () => toResult();
+                    get = () => {
+                        const result = toResult();
+                        result.last = () => first(result, null);
+                        return result;
+                    }
                     break;
                 default:
                     throw new Error('Unexpected');
