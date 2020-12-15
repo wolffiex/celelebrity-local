@@ -5,7 +5,6 @@ import Buzz from './buzz';
 function ChooseGame(props) {
     const useBuzz = props.buzz.useBuzz;
     const roomSchema = {name: ""}; 
-    console.log('ROOMS BUZZZ')
     const [rooms, setRooms] = useBuzz({
         myRooms: Buzz.index(roomSchema),
         all: Buzz.constant("CELEBRITY")});
@@ -34,8 +33,10 @@ function ChooseGame(props) {
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
                     onChange={onChange} size="5">
-                {rooms.myRooms.index("myRooms").map(({id, name}) => 
-                    <option value={id} key={id}>{name}</option>).toArray()}
+                {rooms.all.map(aRooms => aRooms.myRooms)
+                    .flatten(true)
+                    .map(({id, name}) => 
+                        <option value={id} key={id}>{name}</option>).toArray()}
                 <option value={NEW_GAME_VALUE}>Create new room</option>
             </select>
             <input type="submit" />
@@ -45,7 +46,6 @@ function ChooseGame(props) {
         setCreating(false);
         setRooms('myRooms', {name});
     }
-    rooms.all.forEach(entry=> console.log('myRooms', entry));
     const createGameForm = !isCreating ? null :
         <InputForm onSubmit={submitNewGame} label="Room name: " />;
 

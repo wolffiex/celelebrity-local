@@ -132,10 +132,9 @@ function Schema(_schema) {
     if (_schema instanceof Schema) console.error("FIx this");
     function get(name) {
         if (! (name in _schema)) {
-            console.error("Property not found", name, _schema);
             throw new Error("Property not found");
         }
-        return new PropDef(name, _schema[name]);
+        return new PropDef(name, _schema[name], _schema);
     }
 
     this.get = get
@@ -160,7 +159,7 @@ function makeSchema(schemaOr_schema) {
     else return new Schema(schemaOr_schema);
 }
 
-function PropDef(name, schemaPropValue) {
+function PropDef(name, schemaPropValue, ssschema) {
     let type = null;
     let subSchema = null;
     if (schemaPropValue instanceof BuzzLast) {
@@ -170,7 +169,7 @@ function PropDef(name, schemaPropValue) {
         type = PropDef.Types.Index;
         subSchema = makeSchema(schemaPropValue.schema);
     } else if (schemaPropValue instanceof Constant) {
-        //FIXME
+        subSchema = makeSchema(ssschema);
         type = PropDef.Types.Constant;
     } else if (schemaPropValue instanceof Object) {
         type = PropDef.Types.List;

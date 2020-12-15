@@ -37,7 +37,6 @@ function createValuesCache(sign) {
     const isRefType = entry => entry.type === Types.ref || entry.type === Types.refDelete;
     function appendEntry(entry) {
         const version = sign(entry);
-        const oldCunkn = currentChunk;
         currentChunk = Object.freeze([entry].concat(currentChunk));
         callTrackers(entryIdentifier(entry.id, entry.name));
         if (isRefType(entry)) {
@@ -76,11 +75,11 @@ function createValuesCache(sign) {
 
             //iterate over ids that point to the refIds in refIdIterator with prop[name]
             index: function (name, refIdIterator) {
-                return wu(refIdIterator)
-                    .tap(id2 => tracker.indexAccess(name, id2))
-                    .map(id2 => refChain(entries().filter(entry => entry.name === name))
-                            .filter(entry => entry.refId === id2)
-                            .pluck("id"))
+                const refIds = new Set(refIdIterator);
+                refIds.forEach(refId => tracker.indexAccess(name, refId));
+                return refChain(entries().filter(entry => entry.name === name))
+                            .filter(entry => refIds.has(entry.refId))
+                            .pluck("id")
                     .flatten(true)
                     .unique()
             },
