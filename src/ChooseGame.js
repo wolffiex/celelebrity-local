@@ -29,13 +29,11 @@ function ChooseGame(props) {
         props.choose(id);
     }
 
-    //console.log([...rooms.all.map(aRooms => aRooms.myRooms).flatten(true)]);
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
                     onChange={onChange} size="5">
-                {rooms.all.map(aRooms => aRooms.myRooms)
-                    .flatten(true)
+                {rooms.all.select('myRooms')
                     .map(({id, name}) => 
                         <option value={id} key={id}>{name}</option>).toArray()}
                 <option value={NEW_GAME_VALUE}>Create new room</option>

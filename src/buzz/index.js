@@ -188,17 +188,19 @@ function PropDef(name, schemaPropValue, ssschema) {
     const isAssoc = !!subSchema
     this.subSchema = subSchema;
     this.isAssoc = isAssoc;
-    function wrapIndex(index, getter) {
+    function wrapIndex(index, getter, snapshot) {
         //TODO: build set of index
-        index.select = n => console.error("unimplemented");
-        return index.map(getter);
+        const result = index.map(getter);
+        result.select = n => snapshot.getRefs(index, n)
+            .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
+        return result;
     }
     this.define = (id, snapshot) => {
         let get;
         if (type === PropDef.Types.Constant) {
             // this creates an index that points back to every node with this schema
             get = () => wrapIndex(snapshot.index(name, [schemaPropValue.id]),
-                refId => getResult(refId, subSchema, snapshot));
+                refId => getResult(refId, subSchema, snapshot), snapshot);
         } else if (isAssoc) {
             const toResult = () => snapshot.getRefs([id], name)
                 .map(refId => getResult(refId, subSchema, snapshot));
