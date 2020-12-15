@@ -4,14 +4,14 @@ import Buzz from './buzz';
 
 function ChooseGame(props) {
     const useBuzz = props.buzz.useBuzz;
-    const roomSchema = {name: ""};
+    const roomSchema = {name: ""}; 
+    console.log('ROOMS BUZZZ')
     const [rooms, setRooms] = useBuzz({
-        myRooms: Buzz.index(roomSchema), 
+        myRooms: Buzz.index(roomSchema),
         all: Buzz.constant("CELEBRITY")});
     const NEW_GAME_VALUE ="__new"
     const [isCreating, setCreating] = useState(false);
     const [selected, setSelected] = useState(undefined);
-    const games = props.games;
 
     function onChange(e){
         e.preventDefault();
@@ -30,29 +30,28 @@ function ChooseGame(props) {
         props.choose(id);
     }
 
-    //console.log('all rooms', rooms, rooms.all)
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}
                     onChange={onChange} size="5">
-                {games.all.map(({id, name}) => 
+                {rooms.myRooms.index("myRooms").map(({id, name}) => 
                     <option value={id} key={id}>{name}</option>).toArray()}
-                <option value={NEW_GAME_VALUE}>Create new game</option>
+                <option value={NEW_GAME_VALUE}>Create new room</option>
             </select>
             <input type="submit" />
         </form>;
 
     function submitNewGame(name) {
         setCreating(false);
-        //rooms.myRooms.append({name});
-        props.addGame(name);
+        setRooms('myRooms', {name});
     }
+    rooms.all.forEach(entry=> console.log('myRooms', entry));
     const createGameForm = !isCreating ? null :
-        <InputForm onSubmit={submitNewGame} label="Game name: " />;
+        <InputForm onSubmit={submitNewGame} label="Room name: " />;
 
     return (
         <div className="gameChoice">
-            <h1>{props.player.name} enter Game</h1>
+            <h1>{props.player.name} choose room:</h1>
             {selectGameForm}
             {createGameForm}
         </div>

@@ -10,17 +10,24 @@ function node() {
     const valuesCache = new createValuesCache(() => newKey());
 
     function debug() {
-        console.log("BUZZ", nodeKey);
         valuesCache.debug();
     }
 
     function useBuzz(_schema) {
         const schema = makeSchema(_schema);
-        const [{id}, update] = useState({id: newKey()});
-        const invalidate = () => update({id});
+        const [{id}, update] = useState(() => ({id: newKey()}));
+        const invalidate = () => update(({id}) => ({id}));
+
         const snapshot = valuesCache.getSnapshot(invalidate);
 
-        const write = (name, valueOrObj) => writeEntry(id, schema, name, valueOrObj);
+        let didConstants = false;
+        const write = (name, valueOrObj) => {
+            if (!didConstants) {
+                schema.writeConstants(id, writeEntry);
+                didConstants = true;
+            }
+            return writeEntry(id, schema, name, valueOrObj);
+        }
 
         const result = getResult(id, schema, snapshot);
         return [result, write];
@@ -41,6 +48,7 @@ function node() {
 
     function addRef(schema, values) {
         const id = newKey();
+        schema.writeConstants(id, writeEntry);
         Object.entries(values)
             .forEach(([name, valueOrObj]) => writeEntry(id, schema, name, valueOrObj));
         return id;
@@ -120,9 +128,6 @@ class Index{
 const Buzz = {node, enumerate, last, key: newKey, constant, index};
 export default Buzz;
 
-class BuzzDeleted {
-}
-
 function Schema(_schema) {
     if (_schema instanceof Schema) console.error("FIx this");
     function get(name) {
@@ -137,6 +142,16 @@ function Schema(_schema) {
     this.entries = (id, snapshot) => {
         return Object.keys(_schema).map(name => 
             ({name, def: get(name).define(id, snapshot)}));
+    }
+
+    this.debug = () => _schema;
+    this.writeConstants = (id, writeEntry)  => {
+        Object.keys(_schema)
+            .map(name =>({name, propDef: this.get(name)}))
+            .filter(({propDef}) => propDef.type === PropDef.Types.Constant)
+            //gross
+            .forEach(({name, propDef}) => writeEntry(id, this, name, propDef.schemaPropValue.id))
+
     }
 }
 
@@ -153,7 +168,9 @@ function PropDef(name, schemaPropValue) {
         subSchema = makeSchema(schemaPropValue.schema);
     } else if (schemaPropValue instanceof Index) {
         type = PropDef.Types.Index;
+        subSchema = makeSchema(schemaPropValue.schema);
     } else if (schemaPropValue instanceof Constant) {
+        //FIXME
         type = PropDef.Types.Constant;
     } else if (schemaPropValue instanceof Object) {
         type = PropDef.Types.List;
@@ -166,6 +183,7 @@ function PropDef(name, schemaPropValue) {
         throw new Error("Unrecognized type for", schemaPropValue);
     }
 
+    this.schemaPropValue = schemaPropValue;
     this.type = type;
 
     const isAssoc = !!subSchema
@@ -175,14 +193,19 @@ function PropDef(name, schemaPropValue) {
         let get;
         if (type === PropDef.Types.Constant) {
             // this creates an index that points back to every node with this schema
-            let inIn = new IndexInstance();
-            return inIn.reverse();
+            get = () => snapshot.index(name, [schemaPropValue.id])
+                .map(refId => getResult(refId, subSchema, snapshot));
         } else if (isAssoc) {
             const toResult = () => snapshot.getRefs(id, name)
                 .map(refId => getResult(refId, subSchema, snapshot));
             switch (type) {
                 case PropDef.Types.Index:
-                    throw new Error("here at le");
+                    get = () => {
+                        const result = toResult();
+                        result.index = n => snapshot.index(n, snapshot.getRefs(id, name));
+                        return result;
+                    }
+                    break;
                 case PropDef.Types.Last:
                     get = () => first(toResult(), null);
                     break;
@@ -203,15 +226,6 @@ function PropDef(name, schemaPropValue) {
     return typeof propDef;
 }
 
-function iterateConnection(propValues, snapshot, schema) {
-    const seenMap = new Map();
-    return propValues
-        .reject(value => seenMap.has(value.id))
-        .tap(value => seenMap.set(value.id))
-        .reject(value => value instanceof BuzzDeleted)
-        .map(value => getResult(value.id, schema, snapshot))
-}
-
 function first(it, fallback) {
     const {value, done} = it.next();
     return done && (value === undefined) ? fallback : value;
@@ -228,18 +242,6 @@ PropDef.Types = Object.fromEntries([
     "string",
     "boolean",
 ].map(t => [t, Symbol(t)]));
-
-class IndexInstance {
-    append() {
-        return null();
-    }
-    reverse() {
-        return new IndexInstance();
-    }
-    map() {
-        //console.log('whoa')
-    }
-}
 
 function isRef(valueOrRef) {
     return typeof valueOrRef === "string";

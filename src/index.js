@@ -10,6 +10,7 @@ import Buzz from './buzz';
 //if (!masterKey) throw new Error("Missing id.");
 //const key = "password"
 const buzz = Buzz.node();
+global.buzz = buzz;
 
 ReactDOM.render(
   <React.StrictMode>

@@ -2,15 +2,6 @@ var wu = require("wu");
 
 function createValuesCache(sign) {
     let currentChunk = []; //list of key, id, values
-    let chunks = [];
-    /*
-    function receiveExternalChunk(chunk) {
-        chunks = [currentChunk, chunk, ...chunks];
-        currentChunk = [];
-        //for entry in chunk, notify
-        wu(chunk).pluck('id').forEach(notify);
-    }
-    */
 
     let allTrackers = [];
     function SnapshotTracker(invalidate) {
@@ -46,7 +37,8 @@ function createValuesCache(sign) {
     const isRefType = entry => entry.type === Types.ref || entry.type === Types.refDelete;
     function appendEntry(entry) {
         const version = sign(entry);
-        currentChunk = [entry].concat(currentChunk);
+        const oldCunkn = currentChunk;
+        currentChunk = Object.freeze([entry].concat(currentChunk));
         callTrackers(entryIdentifier(entry.id, entry.name));
         if (isRefType(entry)) {
             callTrackers(indexIdentifier(entry.name, entry.refId));
@@ -55,8 +47,8 @@ function createValuesCache(sign) {
     }
 
     function getSnapshot(invalidate) {
-        const snapshotValues = [currentChunk, ...chunks];
-        const entries = () => wu(snapshotValues).flatten(true);
+        const snapshotValues = currentChunk;
+        const entries = () => wu(snapshotValues);
         const get = (id, name) => entries()
             .filter(entry => entry.name === name && entry.id === id)
         const tracker = SnapshotTracker(invalidate);
@@ -86,8 +78,7 @@ function createValuesCache(sign) {
             index: function (name, refIdIterator) {
                 return wu(refIdIterator)
                     .tap(id2 => tracker.indexAccess(name, id2))
-                    .map(id2 => 
-                        refChain(entries().filter(entry => entry.name === name))
+                    .map(id2 => refChain(entries().filter(entry => entry.name === name))
                             .filter(entry => entry.refId === id2)
                             .pluck("id"))
                     .flatten(true)
@@ -111,8 +102,8 @@ function createValuesCache(sign) {
         },
 
         debug : function() {
-        wu.zip( wu.flatten(true, [currentChunk, ...chunks]), wu.count())
-            .forEach(([entry, n]) => console.log(n, entry));
+            wu.zip(wu(currentChunk), wu.count())
+                .forEach(([entry, n]) => console.log(n, entry));
         }
     };
 }

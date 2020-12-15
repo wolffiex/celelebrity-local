@@ -18,7 +18,6 @@ function SubApp(props) {
     const [player, setPlayer] = useBuzz({name: "", ready: false});
     // new rules: you can only write to objects you created
 /*
-    const [rooms, setRooms] = useBuzz({name: "", all: Buzz.constant("CELEBRITY")});
     const [game, setGame] = useBuzz({
         room: Buzz.last(rooms.schema),
         state: GAME_STATES.Created,
@@ -27,7 +26,7 @@ function SubApp(props) {
 */
     const gameSchema = {
         name: "", players: player.schema, state: GAME_STATES.Created};
-    const [games, setGames] = useBuzz({id: "CELEBRITY", all: gameSchema});
+    const [games, setGames] = useBuzz({all_donotuse: gameSchema});
     const [chooser, setChooser] = useBuzz({chosen: Buzz.last(gameSchema)});
 
     const chosen = chooser.chosen;
@@ -50,18 +49,16 @@ function SubApp(props) {
                 setPlayer('ready', true)}} />; }
     
     if (!chosen || chosen.state === GAME_STATES.Finished) {
-        return <ChooseGame games={games} choose={id => setChooser({chosen: {id}})} player={player} 
+        return <ChooseGame games={games} choose={id => setChooser('chosen', id)} player={player} 
              addGame={name=>setGames('all', {name})} buzz={props.buzz} />
     }
 
-    const setName = name => setChooser({chosen: {id: chosen.id, name}});
-    return <GamePlay game={chosen} setName={setName} player={player}/>
+    return <GamePlay game={chosen} player={player} />
 }
 
 function GamePlay(props) {
     return <div>
         <h2>This is game {props.game.name}</h2>
-        <button onClick={() => props.setName(props.game.name + "o")}> o me </button>
     </div>;
 }
 
