@@ -7,7 +7,6 @@ function App(props) {
     let stepper = () => {};
     function step(_cb) {
         stepper = _cb;
-
     }
     const button = <button onClick={()=>stepper()}> Step </button>;
     return <div>{button} <SubApp buzz={props.buzz} step={step} /></div>
@@ -27,6 +26,9 @@ function SubApp(props) {
             setPlayer('name', 'k3f');
             setPlayer('ready', true);
             return
+        }
+        if (!chosenRoom) {
+            setGame('room', {name: 'chose'});
         }
     });
 

@@ -2,27 +2,55 @@ import {getResult} from './Obj.js';
 
 function Schema(defOrSchema) {
     if (defOrSchema instanceof Schema) console.error("FIx this");
+    const schemaDef = defOrSchema;
     function get(name) {
-        if (! (name in defOrSchema)) {
+        if (! (name in schemaDef)) {
             throw new Error("Property not found");
         }
-        return new PropDef(name, defOrSchema[name], defOrSchema);
+        return new PropDef(name, schemaDef[name], schemaDef);
     }
 
     this.get = get
+    this.keys = () => Object.keys(schemaDef);
     this.entries = (id, snapshot) => {
-        return Object.keys(defOrSchema).map(name => 
+        return Object.keys(schemaDef).map(name => 
             ({name, def: get(name).define(id, snapshot)}));
     }
 
-    this.debug = () => defOrSchema;
+    this.debug = () => schemaDef;
     this.writeConstants = (id, writeEntry)  => {
-        Object.keys(defOrSchema)
+        Object.keys(schemaDef)
             .map(name =>({name, propDef: this.get(name)}))
             .filter(({propDef}) => propDef.type === PropDef.Types.Constant)
             //gross
             .forEach(({name, propDef}) => writeEntry(id, this, name, propDef.schemaPropValue.args[0]))
+    }
 
+    this.getValue = (id, name, snapshot) => {
+        const propDef = get(name);
+        const schemaPropValue = schemaDef[name];
+        const isAssoc = propDef.isAssoc;
+        const subSchema = propDef.subSchema;
+        if (propDef.type === PropDef.Types.Constant) {
+            // this creates an index that points back to every node with this schema
+            return wrapIndex(snapshot.index(name, [schemaPropValue.args[0]]),
+                refId => getResult(refId, subSchema, snapshot), snapshot, subSchema);
+        } else if (isAssoc) {
+            const toResult = () => snapshot.getRefs([id], name)
+                .map(refId => getResult(refId, subSchema, snapshot));
+            switch (propDef.type) {
+                case PropDef.Types.Last:
+                    return first(toResult(), null);
+                case PropDef.Types.List:
+                    const result = toResult();
+                    result.last = () => first(result, null);
+                    return result;
+                default:
+                    throw new Error('Unexpected');
+            }
+        } else {
+            return first(snapshot.getValues(id, name), schemaPropValue);
+        }
     }
 }
 
@@ -64,12 +92,6 @@ function PropDef(name, schemaPropValue, ssschema) {
     const isAssoc = !!subSchema
     this.subSchema = subSchema;
     this.isAssoc = isAssoc;
-    function wrapIndex(index, getter, snapshot) {
-        const result = index.map(getter);
-        result.select = n => snapshot.getRefs(index, n)
-            .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
-        return result;
-    }
 
     this.define = (id, snapshot) => {
         let get;
@@ -102,7 +124,6 @@ function PropDef(name, schemaPropValue, ssschema) {
         return {get, enumerable: true};
     }
 
-    return typeof propDef;
 }
 
 function first(it, fallback) {
@@ -129,6 +150,13 @@ function SchemaTypeClass(type, ...args) {
     this.type = type;
     this.args = args;
 };
+
+function wrapIndex(index, getter, snapshot, subSchema) {
+    const result = index.map(getter);
+    result.select = n => snapshot.getRefs(index, n)
+        .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
+    return result;
+}
 
 SchemaType.Last = Symbol('SchemaType.Last');
 SchemaType.Constant = Symbol('SchemaType.Constant');
