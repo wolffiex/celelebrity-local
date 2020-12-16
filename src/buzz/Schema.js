@@ -12,11 +12,6 @@ function Schema(defOrSchema) {
 
     this.get = get
     this.keys = () => Object.keys(schemaDef);
-    this.entries = (id, snapshot) => {
-        return Object.keys(schemaDef).map(name => 
-            ({name, def: get(name).define(id, snapshot)}));
-    }
-
     this.debug = () => schemaDef;
     this.writeConstants = (id, writeEntry)  => {
         Object.keys(schemaDef)
@@ -92,38 +87,6 @@ function PropDef(name, schemaPropValue, ssschema) {
     const isAssoc = !!subSchema
     this.subSchema = subSchema;
     this.isAssoc = isAssoc;
-
-    this.define = (id, snapshot) => {
-        let get;
-        if (type === PropDef.Types.Constant) {
-            // this creates an index that points back to every node with this schema
-            get = () => wrapIndex(snapshot.index(name, [schemaPropValue.args[0]]),
-                refId => getResult(refId, subSchema, snapshot), snapshot);
-        } else if (isAssoc) {
-            const toResult = () => snapshot.getRefs([id], name)
-                .map(refId => getResult(refId, subSchema, snapshot));
-            switch (type) {
-                case PropDef.Types.Last:
-                    get = () => first(toResult(), null);
-                    break;
-                case PropDef.Types.List:
-                    get = () => {
-                        const result = toResult();
-                        result.last = () => first(result, null);
-                        return result;
-                    }
-                    break;
-                default:
-                    throw new Error('Unexpected');
-            }
-        } else {
-            get = () => {
-                return first(snapshot.getValues(id, name), schemaPropValue);
-            }
-        }
-        return {get, enumerable: true};
-    }
-
 }
 
 function first(it, fallback) {
