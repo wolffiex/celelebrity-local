@@ -1,5 +1,7 @@
 var wu = require("wu");
 
+// FIXME: Store values as obj, rather than as k,v
+// FIXME: linked list rather than chunks
 function createValuesCache(sign) {
     let currentChunk = []; //list of key, id, values
 
@@ -15,7 +17,7 @@ function createValuesCache(sign) {
     const entryIdentifier = (id, name) => id + "|" + name;
     const indexIdentifier = (name, refId) => name + "*" + refId;
 
-    function callTrackers(identifier) {
+    function track(identifier) {
         allTrackers = allTrackers
             .map(tracker => {
                 if (tracker.access.has(identifier)) {
@@ -28,19 +30,14 @@ function createValuesCache(sign) {
     }
 
 
-    const Types = {
-        value : 0,
-        ref : 1,
-        refDelete : 2,
-    }
-
-    const isRefType = entry => entry.type === Types.ref || entry.type === Types.refDelete;
     function appendEntry(entry) {
         const version = sign(entry);
         currentChunk = Object.freeze([entry].concat(currentChunk));
-        callTrackers(entryIdentifier(entry.id, entry.name));
-        if (isRefType(entry)) {
-            callTrackers(indexIdentifier(entry.name, entry.refId));
+        for (const [name, value] of Object.entries(entry.props)) {
+            track(entryIdentifier(entry.id, name));
+            if (value instanceof Assoc) {
+                track(indexIdentifier(name, value));
+            }
         }
         return version;
     }
@@ -49,39 +46,43 @@ function createValuesCache(sign) {
         const snapshotValues = currentChunk;
         const entries = () => wu(snapshotValues);
         const get = (ids, name) => entries()
-            .filter(entry => entry.name === name && ids.has(entry.id))
-        const tracker = SnapshotTracker(invalidate);
+            .filter(entry => name in entry.props && ids.has(entry.id))
+            .map(entry => entry.props[name]);
 
-        function refChain(it) {
-            let seen = new Set();
-            return it
-                .filter(entry => isRefType(entry) && !seen.has(entry.refId))
-                .tap(entry => seen.add(entry.refId))
-                .reject(entry => entry.type === Types.refDelete)
-        }
+        const tracker = SnapshotTracker(invalidate);
 
         return {
             getValues : function (id, name) { 
                 tracker.entryAccess(id, name);
                 return get(new Set([id]), name)
-                    .reject(isRefType)
-                    .pluck("value");
+                    .reject(value => value instanceof Assoc)
             },
 
             getRefs: function(idIterator, name) { 
                 const ids = new Set(idIterator);
                 ids.forEach(id => tracker.entryAccess(id, name));
-                return refChain(get(ids, name)).pluck("refId");
+
+                let seen = new Set();
+                return get(ids, name)
+                    .filter(value => value instanceof Assoc && !seen.has(value.id2))
+                    .tap(value => seen.add(value.id2))
+                    .reject(value => value.isDelete)
+                    .pluck('id2')
             },
 
-            //iterate over ids that point to the refIds in refIdIterator with prop[name]
-            index: function (name, refIdIterator) {
-                const refIds = new Set(refIdIterator);
-                refIds.forEach(refId => tracker.indexAccess(name, refId));
-                return refChain(entries().filter(entry => entry.name === name))
-                            .filter(entry => refIds.has(entry.refId))
-                            .pluck("id")
-                    .flatten(true)
+            //iterate over ids that point to the id2s in id2Iterator with prop[name]
+            index: function (name, id2Iterator) {
+                const id2s = new Set(id2Iterator);
+                id2s.forEach(id2 => tracker.indexAccess(name, id2));
+                let seen = new Set();
+                return entries()
+                    .filter(entry =>  
+                        name in entry.props && 
+                        entry.props[name] instanceof Assoc &&
+                        id2s.has(entry.props[name].id2) && 
+                        !seen.has(entry.props[name].id2))
+                    .tap(entry => seen.add(entry.props[name].id2))
+                    .map(entry => entry.id)
                     .unique()
             },
 
@@ -89,23 +90,25 @@ function createValuesCache(sign) {
     }
 
     return {getSnapshot,
-        appendValue: function (id, name, value) {
-            return appendEntry({id, name, value, type: Types.value});
+        append: function (id, props) {
+            return appendEntry({id, props});
         },
 
-        appendRef: function (id, name, refId) {
-            return appendEntry({id, name, refId, type: Types.ref});
+        assoc: function (id2, isDelete) {
+            return new Assoc(id2, isDelete === undefined ? false : true);
         },
 
-        appendRefDelete: function (id, name, refId) {
-            return appendEntry({id, name, refId, type: Types.refDelete});
-        },
-
-        debug : function() {
+        debug: function() {
             wu.zip(wu(currentChunk), wu.count())
                 .forEach(([entry, n]) => console.log(n, entry));
         }
     };
+}
+
+function Assoc(id2, isDelete) {
+    this.id2 = id2;
+    this.isDelete = isDelete;
+    Object.freeze(this);
 }
 
 export default createValuesCache;

@@ -25,6 +25,7 @@ function node() {
         let didConstants = false;
         const write = (name, valueOrObj) => {
             if (!didConstants) {
+                //FIXME
                 schema.writeConstants(id, writeEntry);
                 didConstants = true;
             }
@@ -39,12 +40,12 @@ function node() {
         const propDef = schema.get(name);
         return propDef.isAssoc ?
             makeRef(id, name, propDef, valueOrObj) :
-            valuesCache.appendValue(id, name, valueOrObj);
+            valuesCache.append(id, { [name]: valueOrObj });
     }
 
     function makeRef(id, name, propDef, valueOrObj) {
         const refId = isRef(valueOrObj) ? valueOrObj : addRef(propDef.subSchema, valueOrObj);
-        valuesCache.appendRef(id, name, refId);
+        valuesCache.append(id, { [name]: valuesCache.assoc(refId)});
         return refId;
     }
 
@@ -57,10 +58,6 @@ function node() {
     }
 
     return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};
-}
-
-function assert(x, msg) {
-    if (!x) throw( new Error(msg));
 }
 
 function enumerate(...variants) {

@@ -28,11 +28,12 @@ function Schema(defOrSchema) {
         const subSchema = propDef.subSchema;
         if (propDef.type === PropDef.Types.Constant) {
             // this creates an index that points back to every node with this schema
-            return wrapIndex(snapshot.index(name, [schemaPropValue.args[0]]),
-                refId => getResult(refId, subSchema, snapshot), snapshot, subSchema);
+            const getIndex = () => snapshot.index(name, [schemaPropValue.args[0]]);
+            const mapToResult = id2 => getResult(id2, subSchema, snapshot);
+            return wrapIndex(getIndex, mapToResult, snapshot, subSchema);
         } else if (isAssoc) {
             const toResult = () => snapshot.getRefs([id], name)
-                .map(refId => getResult(refId, subSchema, snapshot));
+                .map(id2 => getResult(id2, subSchema, snapshot));
             switch (propDef.type) {
                 case PropDef.Types.Last:
                     return first(toResult(), null);
@@ -114,9 +115,9 @@ function SchemaTypeClass(type, ...args) {
     this.args = args;
 };
 
-function wrapIndex(index, getter, snapshot, subSchema) {
-    const result = index.map(getter);
-    result.select = n => snapshot.getRefs(index, n)
+function wrapIndex(getIndex, getter, snapshot, subSchema) {
+    const result = getIndex().map(getter);
+    result.select = n => snapshot.getRefs(getIndex(), n)
         .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
     return result;
 }
