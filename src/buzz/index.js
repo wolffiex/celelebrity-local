@@ -22,39 +22,26 @@ function node() {
 
         const snapshot = valuesCache.getSnapshot(invalidate);
 
-        let didConstants = false;
-        const write = (name, valueOrObj) => {
-            if (!didConstants) {
-                //FIXME
-                schema.writeConstants(id, writeEntry);
-                didConstants = true;
-            }
-            return writeEntry(id, schema, name, valueOrObj);
-        }
+        const write = props => writeEntry(id, schema, props);
 
         const result = getResult(id, schema, snapshot);
         return [result, write];
     }
 
-    function writeEntry(id, schema, name, valueOrObj) {
-        const propDef = schema.get(name);
-        return propDef.isAssoc ?
-            makeRef(id, name, propDef, valueOrObj) :
-            valuesCache.append(id, { [name]: valueOrObj });
-    }
-
-    function makeRef(id, name, propDef, valueOrObj) {
-        const refId = isRef(valueOrObj) ? valueOrObj : addRef(propDef.subSchema, valueOrObj);
-        valuesCache.append(id, { [name]: valuesCache.assoc(refId)});
-        return refId;
-    }
-
-    function addRef(schema, values) {
-        const id = newKey();
-        schema.writeConstants(id, writeEntry);
-        Object.entries(values)
-            .forEach(([name, valueOrObj]) => writeEntry(id, schema, name, valueOrObj));
+    function writeEntry(id, schema, oProps) {
+        const props = Object.entries(oProps).reduce((props, [name, oValue]) => {
+            const propDef = schema.get(name);
+            const value = propDef.isAssoc ? makeRef(id, name, propDef, oValue) : oValue;
+            props[name] = value;
+            return props;
+        }, schema.defineConstants(id, valuesCache.assoc));
+        valuesCache.append(id, props);
         return id;
+    }
+
+    function makeRef(id, name, propDef, oValue) {
+        return valuesCache.assoc(isRef(oValue) ?
+            oValue : writeEntry(newKey(), propDef.subSchema, oValue));
     }
 
     return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};

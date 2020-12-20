@@ -23,23 +23,20 @@ function SubApp(props) {
     const chosenRoom = game.room;
     props.step(() => {
         if (!player.ready) {
-            setPlayer('name', 'k3f');
-            setPlayer('ready', true);
+            setPlayer({name: 'k3f', ready: true});
             return
         }
         if (!chosenRoom) {
-            setGame('room', {name: 'chose'});
+            setGame({room : {name: 'chose'}});
         }
     });
 
     if (!player.ready) {
         return <InputForm label="Player: "
-            onSubmit={name => {
-                setPlayer('name', name)
-                setPlayer('ready', true)}} />; }
+            onSubmit={name => setPlayer({name, ready: true})} />; }
     
     if (!chosenRoom) {
-        return <ChooseGame game={game} choose={id => setGame('room', id)}
+        return <ChooseGame game={game} choose={room => setGame({room})}
             player={player} buzz={props.buzz} />
     }
 

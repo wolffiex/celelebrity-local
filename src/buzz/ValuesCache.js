@@ -82,7 +82,7 @@ function createValuesCache(sign) {
                         id2s.has(entry.props[name].id2) && 
                         !seen.has(entry.props[name].id2))
                     .tap(entry => seen.add(entry.props[name].id2))
-                    .map(entry => entry.id)
+                    .pluck('id')
                     .unique()
             },
 

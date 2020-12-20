@@ -13,12 +13,14 @@ function Schema(defOrSchema) {
     this.get = get
     this.keys = () => Object.keys(schemaDef);
     this.debug = () => schemaDef;
-    this.writeConstants = (id, writeEntry)  => {
-        Object.keys(schemaDef)
-            .map(name =>({name, propDef: this.get(name)}))
-            .filter(({propDef}) => propDef.type === PropDef.Types.Constant)
-            //gross
-            .forEach(({name, propDef}) => writeEntry(id, this, name, propDef.schemaPropValue.args[0]))
+    this.defineConstants = (id, assoc)  => {
+        return Object.keys(schemaDef).reduce((props, name) => {
+            const propDef = get(name);
+            if (propDef.type === PropDef.Types.Constant) {
+                props[name] = assoc(propDef.schemaPropValue.args[0]);
+            }
+            return props;
+        }, {});
     }
 
     this.getValue = (id, name, snapshot) => {
