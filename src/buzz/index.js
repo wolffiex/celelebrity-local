@@ -31,17 +31,14 @@ function node() {
     function writeEntry(id, schema, oProps) {
         const props = Object.entries(oProps).reduce((props, [name, oValue]) => {
             const propDef = schema.get(name);
-            const value = propDef.isAssoc ? makeRef(id, name, propDef, oValue) : oValue;
+            const value = !propDef.isAssoc ? oValue : 
+                valuesCache.assoc(isRef(oValue) ? oValue :
+                    writeEntry(newKey(), propDef.subSchema, oValue));
             props[name] = value;
             return props;
         }, schema.defineConstants(id, valuesCache.assoc));
         valuesCache.append(id, props);
         return id;
-    }
-
-    function makeRef(id, name, propDef, oValue) {
-        return valuesCache.assoc(isRef(oValue) ?
-            oValue : writeEntry(newKey(), propDef.subSchema, oValue));
     }
 
     return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};
