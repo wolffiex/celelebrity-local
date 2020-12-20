@@ -13,7 +13,7 @@ function Schema(defOrSchema) {
     this.get = get
     this.keys = () => Object.keys(schemaDef);
     this.debug = () => schemaDef;
-    this.defineConstants = (id, assoc)  => {
+    this.defineConstants = assoc  => {
         return Object.keys(schemaDef).reduce((props, name) => {
             const propDef = get(name);
             if (propDef.type === PropDef.Types.Constant) {

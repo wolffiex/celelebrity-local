@@ -36,7 +36,7 @@ function node() {
                     writeEntry(newKey(), propDef.subSchema, oValue));
             props[name] = value;
             return props;
-        }, schema.defineConstants(id, valuesCache.assoc));
+        }, schema.defineConstants(valuesCache.assoc));
         valuesCache.append(id, props);
         return id;
     }

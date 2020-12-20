@@ -1,9 +1,8 @@
 var wu = require("wu");
 
-// FIXME: Store values as obj, rather than as k,v
 // FIXME: linked list rather than chunks
 function createValuesCache(sign) {
-    let currentChunk = []; //list of key, id, values
+    let head = null; //list of key, id, values
 
     let allTrackers = [];
     function SnapshotTracker(invalidate) {
@@ -32,7 +31,8 @@ function createValuesCache(sign) {
 
     function appendEntry(entry) {
         const version = sign(entry);
-        currentChunk = Object.freeze([entry].concat(currentChunk));
+        entry.next = head;
+        head = entry;
         for (const [name, value] of Object.entries(entry.props)) {
             track(entryIdentifier(entry.id, name));
             if (value instanceof Assoc) {
@@ -42,9 +42,16 @@ function createValuesCache(sign) {
         return version;
     }
 
+    function* yieldList(ptr) {
+        while(ptr) {
+            yield ptr;
+            ptr = ptr.next;
+        }
+    }
+
     function getSnapshot(invalidate) {
-        const snapshotValues = currentChunk;
-        const entries = () => wu(snapshotValues);
+        const currentHead = head;
+        const entries = () => wu(yieldList(currentHead));
         const get = (ids, name) => entries()
             .filter(entry => name in entry.props && ids.has(entry.id))
             .map(entry => entry.props[name]);
@@ -99,8 +106,8 @@ function createValuesCache(sign) {
         },
 
         debug: function() {
-            wu.zip(wu(currentChunk), wu.count())
-                .forEach(([entry, n]) => console.log(n, entry));
+            wu.zip(wu(yieldList(head)), wu.count())
+                .forEach(([entry, n]) => console.log(n, entry.id, entry.props));
         }
     };
 }
