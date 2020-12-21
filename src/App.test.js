@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import Buzz from './buzz';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+test('steps', () => {
+    const buzz = Buzz.node();
+    render(<App buzz={buzz}/>);
+    const stepButton = screen.getByText(/step/i);
+    expect(stepButton).toBeInTheDocument();
 });
