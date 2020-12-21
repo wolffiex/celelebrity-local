@@ -17,6 +17,15 @@ test('snapshot', () => {
     expect([...snap2.getValues('A', 'x')]).toEqual([3, 1]);
 });
 
+test('assoc', () => {
+    const sign = () => 'test';
+    const valuesCache = createValuesCache(sign);
+    valuesCache.append('A', {name: "aayyy"});
+    valuesCache.append('B', {a: valuesCache.assoc('A')});
+    const snap = valuesCache.getSnapshot(() => {});
+    expect([...snap.getRefs('B', 'a')]).toEqual(['A']);
+});
+
 test('index', () => {
     const sign = () => 'test';
     const valuesCache = createValuesCache(sign);
