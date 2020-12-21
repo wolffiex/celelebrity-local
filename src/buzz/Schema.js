@@ -52,9 +52,9 @@ function Schema(defOrSchema) {
     }
 }
 
-export function makeSchema(schemaOr_schema) {
-    if (schemaOr_schema instanceof Schema) return schemaOr_schema;
-    else return new Schema(schemaOr_schema);
+export function makeSchema(schemaOrDef) {
+    if (schemaOrDef instanceof Schema) return schemaOrDef;
+    else return new Schema(schemaOrDef);
 }
 
 function PropDef(name, schemaPropValue, ssschema) {
