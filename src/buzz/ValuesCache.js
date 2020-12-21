@@ -87,7 +87,7 @@ function createValuesCache(sign) {
                         name in entry.props && 
                         entry.props[name] instanceof Assoc &&
                         id2s.has(entry.props[name].id2) && 
-                        !seen.has(entry.props[name].id2))
+                        !seen.has(entry.id))
                     .tap(entry => seen.add(entry.props[name].id2))
                     .pluck('id')
                     .unique()
