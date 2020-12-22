@@ -32,7 +32,10 @@ function Schema(defOrSchema) {
             // this creates an index that points back to every node with this schema
             const getIndex = () => snapshot.index(name, [schemaPropValue.args[0]]);
             const mapToResult = id2 => getResult(id2, subSchema, snapshot);
-            return wrapIndex(getIndex, mapToResult, snapshot, subSchema);
+            const result = getIndex().map(mapToResult);
+            result.select = n => snapshot.getRefs(getIndex(), n)
+                .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
+            return result;
         } else if (isAssoc) {
             const toResult = () => snapshot.getRefs([id], name)
                 .map(id2 => getResult(id2, subSchema, snapshot));
@@ -117,11 +120,7 @@ function SchemaTypeClass(type, ...args) {
     this.args = args;
 };
 
-function wrapIndex(getIndex, getter, snapshot, subSchema) {
-    const result = getIndex().map(getter);
-    result.select = n => snapshot.getRefs(getIndex(), n)
-        .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
-    return result;
+function wrapIndex(getIndex, mapToResult, snapshot, subSchema) {
 }
 
 SchemaType.Last = Symbol('SchemaType.Last');
