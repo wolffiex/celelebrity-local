@@ -5,7 +5,7 @@ function Schema(defOrSchema) {
     const schemaDef = defOrSchema;
     function get(name) {
         if (! (name in schemaDef)) {
-            throw new Error("Property not found");
+            throw new Error("Property not found: " + name);
         }
         return new PropDef(name, schemaDef[name], schemaDef);
     }
@@ -119,9 +119,6 @@ function SchemaTypeClass(type, ...args) {
     this.type = type;
     this.args = args;
 };
-
-function wrapIndex(getIndex, mapToResult, snapshot, subSchema) {
-}
 
 SchemaType.Last = Symbol('SchemaType.Last');
 SchemaType.Constant = Symbol('SchemaType.Constant');

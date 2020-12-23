@@ -96,19 +96,28 @@ function createValuesCache(sign) {
         };
     }
 
-    return {getSnapshot,
+    function assoc_(id2, isDelete) {
+        return new Assoc(id2, isDelete === undefined ? false : true);
+    }
+
+    return {
+        getSnapshot,
+        assoc: assoc_,
+        write: function(id, transaction) {
+            let props = {};
+            const set = (name, value) => props[name] = value;
+            const assoc = (name, id2) => props[name] = assoc_(id2);
+            const assocDelete = (name, id2) => props[name] = assoc_(id2, true);
+            transaction({set, assoc, assocDelete});
+            return appendEntry({id, props});
+        },
         append: function (id, props) {
             return appendEntry({id, props});
         },
-
-        assoc: function (id2, isDelete) {
-            return new Assoc(id2, isDelete === undefined ? false : true);
-        },
-
         debug: function() {
             wu.zip(wu(yieldList(head)), wu.count())
                 .forEach(([entry, n]) => console.log(n, entry.id, entry.props));
-        }
+        },
     };
 }
 

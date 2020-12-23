@@ -35,3 +35,12 @@ test('index', () => {
     const snap = valuesCache.getSnapshot(() => {});
     expect([...snap.index('a', ['A'])]).toEqual(['C', 'B']);
 });
+
+test('write', () => {
+    const sign = () => 'test';
+    const valuesCache = createValuesCache(sign);
+    valuesCache.write('A', ({set}) => set('name', "aayyy"));
+    valuesCache.write('B',({assoc}) => assoc('a', "A"));
+    const snap = valuesCache.getSnapshot(() => {});
+    expect([...snap.getRefs('B', 'a')]).toEqual(['A']);
+});

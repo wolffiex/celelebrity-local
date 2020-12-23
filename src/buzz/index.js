@@ -15,9 +15,10 @@ function node() {
         valuesCache.debug();
     }
 
-    function useBuzz(_schema) {
+    function useBuzz(_schema, _id) {
         const schema = makeSchema(_schema);
-        const [{id}, update] = useState(() => ({id: newKey()}));
+        //TODO if _id, make sure it is writeable by me
+        const [{id}, update] = useState(() => ({id: _id || newKey()}));
         const invalidate = () => update(({id}) => ({id}));
 
         const snapshot = valuesCache.getSnapshot(invalidate);
