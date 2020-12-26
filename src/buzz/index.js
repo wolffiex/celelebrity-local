@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
-import {makeSchema, SchemaType} from './Schema.js';
+import {makeSchema} from './Schema.js';
 import {getResult} from './Obj.js';
+import {Types, InputType} from './Types.js';
 
 function newKey() {
     return btoa(Math.random()).slice(-8);
@@ -60,11 +61,11 @@ function BuzzEnumVariant(enumeration) {
 }
 
 function last(schemaDef) {
-    return SchemaType(SchemaType.Last, schemaDef);
+    return InputType(Types.Last, schemaDef);
 }
 
 function constant(id) {
-    return SchemaType(SchemaType.Constant, id);
+    return InputType(Types.Constant, id);
 }
 
 function isRef(valueOrRef) {

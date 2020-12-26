@@ -1,4 +1,5 @@
 import {getResult} from './Obj.js';
+import {Types, getType} from './Types.js';
 
 function Schema(defOrSchema) {
     if (defOrSchema instanceof Schema) console.error("FIx this");
@@ -16,7 +17,7 @@ function Schema(defOrSchema) {
     this.defineConstants = assoc  => {
         return Object.keys(schemaDef).reduce((props, name) => {
             const propDef = get(name);
-            if (propDef.type === PropDef.Types.Constant) {
+            if (propDef.type === Types.Constant) {
                 props[name] = assoc(propDef.schemaPropValue.args[0]);
             }
             return props;
@@ -28,7 +29,7 @@ function Schema(defOrSchema) {
         const schemaPropValue = schemaDef[name];
         const isAssoc = propDef.isAssoc;
         const subSchema = propDef.subSchema;
-        if (propDef.type === PropDef.Types.Constant) {
+        if (propDef.type === Types.Constant) {
             // this creates an index that points back to every node with this schema
             const getIndex = () => snapshot.index(name, [schemaPropValue.args[0]]);
             const mapToResult = id2 => getResult(id2, subSchema, snapshot);
@@ -40,9 +41,9 @@ function Schema(defOrSchema) {
             const toResult = () => snapshot.getRefs([id], name)
                 .map(id2 => getResult(id2, subSchema, snapshot));
             switch (propDef.type) {
-                case PropDef.Types.Last:
+                case Types.Last:
                     return first(toResult(), null);
-                case PropDef.Types.List:
+                case Types.List:
                     const result = toResult();
                     result.last = () => first(result, null);
                     return result;
@@ -61,30 +62,18 @@ export function makeSchema(schemaOrDef) {
 }
 
 function PropDef(name, schemaPropValue, ssschema) {
-    let type = null;
+    const type = getType(schemaPropValue);
     let subSchema = null;
-    if (schemaPropValue instanceof SchemaTypeClass) {
-        switch (schemaPropValue.type) {
-            case SchemaType.Constant:
-                type = PropDef.Types.Constant;
-                subSchema = makeSchema(ssschema);
-                break;
-            case SchemaType.Last:
-                type = PropDef.Types.Last;
-                subSchema = makeSchema(schemaPropValue.args[0]);
-                break;
-            default:
-                throw new Error("Unrecognized schema type", schemaPropValue.type);
-        }
-    } else if (schemaPropValue instanceof Object) {
-        type = PropDef.Types.List;
-        subSchema = makeSchema(schemaPropValue);
-    } else {
-        type = PropDef.Types[typeof schemaPropValue];
-    }
-
-    if (type === undefined) {
-        throw new Error("Unrecognized type for", schemaPropValue);
+    switch (type) {
+        case Types.Constant:
+            subSchema = makeSchema(ssschema);
+            break;
+        case Types.Last:
+            subSchema = makeSchema(schemaPropValue.args[0]);
+            break;
+        case Types.object:
+            subSchema = makeSchema(schemaPropValue);
+            break;
     }
 
     this.schemaPropValue = schemaPropValue;
@@ -99,26 +88,3 @@ function first(it, fallback) {
     const {value, done} = it.next();
     return done && (value === undefined) ? fallback : value;
 }
-
-PropDef.Types = Object.fromEntries([
-    "Constant",
-    "Last",
-    "List",
-    "number",
-    "string",
-    "boolean",
-].map(t => [t, Symbol(t)]));
-
-export function SchemaType(...args) {
-    const o = new SchemaTypeClass(...args);
-    Object.freeze(o);
-    return o;
-}
-
-function SchemaTypeClass(type, ...args) {
-    this.type = type;
-    this.args = args;
-};
-
-SchemaType.Last = Symbol('SchemaType.Last');
-SchemaType.Constant = Symbol('SchemaType.Constant');
