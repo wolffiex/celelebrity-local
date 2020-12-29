@@ -2,11 +2,8 @@ import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
 import {get, Index} from './Schema.js';
 import {getResult} from './Obj.js';
-import {Types, InputType} from './Types.js';
-
-function newKey() {
-    return btoa(Math.random()).slice(-8);
-}
+import {Types, getType} from './Types.js';
+import {Key} from './Key.js';
 
 function node() {
     const nodeKey = newKey();
@@ -18,28 +15,36 @@ function node() {
 
     function useBuzz(schemaDef, _id) {
         //TODO if _id, make sure it is writeable by me
-        const [{id}, update] = useState(() => ({id: _id || newKey()}));
-        const invalidate = () => update(({id}) => ({id}));
+        const [key, update] = useState(() => _id ? Key(_id) : newKey());
+        const invalidate = () => update(k => Key(k.id));
 
         const snapshot = valuesCache.getSnapshot(invalidate);
 
-        const write = props => writeEntry(id, schemaDef, props);
+        const write = props => writeEntry(key, schemaDef, props);
 
-        const result = getResult(id, schemaDef, snapshot);
+        const result = getResult(key, schemaDef, snapshot);
         return [result, write];
     }
 
-    function writeEntry(id, schemaDef, oProps) {
-        const props = Object.entries(oProps).reduce((props, [name, oValue]) => {
-            const propDef = schema.get(name);
-            const value = !propDef.isAssoc ? oValue : 
-                valuesCache.assoc(isRef(oValue) ? oValue :
-                    writeEntry(newKey(), propDef.subSchema, oValue));
-            props[name] = value;
-            return props;
-        }, schema.defineConstants(valuesCache.assoc));
-        valuesCache.append(id, props);
-        return id;
+    function writeEntry(key, schemaDef, oProps) {
+        valuesCache.write(key, ({set, assoc, assocDelete}) => {
+            Object.entries(oProps).forEach(([name, oValue]) => {
+                console.log(name, oValue)
+                const type = getType(oValue);
+                switch (type) { 
+                    case "Key":
+                        assoc(oValue);
+                        break;
+                    case "object":
+                        assoc(writeEntry(newKey(),  oValue));
+                        break;
+                    default:
+                        set(name, oValue);
+                        break;
+                }
+            });
+        });
+        return key;
     }
 
     return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};
@@ -63,8 +68,13 @@ function last(schemaDef) {
     return InputType(Types.Last, schemaDef);
 }
 
+function newKey() {
+    return Key(btoa(Math.random()).slice(-8));
+}
+
+
 function constant(id) {
-    return InputType(Types.Constant, id);
+    return Key(id);
 }
 
 function isRef(valueOrRef) {

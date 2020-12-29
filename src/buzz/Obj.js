@@ -2,7 +2,7 @@ import {get} from './Schema.js';
 function Obj(key, schemaDef, snapshot) {
     let result = {
         get key() {
-            return id;
+            return key;
         }
     };
 
@@ -15,19 +15,6 @@ function Obj(key, schemaDef, snapshot) {
     return result;
 }
     
-/*
-const UNSET = Symbol();
-function once(getValue) {
-    let value = UNSET;
-    return function () {
-        if (value === UNSET) {
-            value = getValue();
-        }
-        return value;
-    }
-}
-*/
-
 export function getResult(id, schema, snapshot) {
     return Obj(id, schema, snapshot);
 }
