@@ -1,19 +1,16 @@
-function Obj(id, schema, snapshot) {
+import {get} from './Schema.js';
+function Obj(key, schemaDef, snapshot) {
     let result = {
-        get id() {
+        get key() {
             return id;
-        },
-        get schema() {
-            return schema;
         }
     };
 
-    function getGet(name) {
-        return () => schema.getValue(id, name, snapshot);
-    }
+    Object.keys(schemaDef).forEach(name => Object.defineProperty(result, name,
+        {get: () => get([key], name, snapshot, schemaDef)}
+    ));
 
-    schema.keys().forEach(name =>
-        Object.defineProperty(result, name, {get: getGet(name)}));
+    Object.freeze(result);
         
     return result;
 }

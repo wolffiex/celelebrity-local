@@ -16,21 +16,20 @@ function node() {
         valuesCache.debug();
     }
 
-    function useBuzz(_schema, _id) {
-        const schema = makeSchema(_schema);
+    function useBuzz(schemaDef, _id) {
         //TODO if _id, make sure it is writeable by me
         const [{id}, update] = useState(() => ({id: _id || newKey()}));
         const invalidate = () => update(({id}) => ({id}));
 
         const snapshot = valuesCache.getSnapshot(invalidate);
 
-        const write = props => writeEntry(id, schema, props);
+        const write = props => writeEntry(id, schemaDef, props);
 
-        const result = getResult(id, schema, snapshot);
+        const result = getResult(id, schemaDef, snapshot);
         return [result, write];
     }
 
-    function writeEntry(id, schema, oProps) {
+    function writeEntry(id, schemaDef, oProps) {
         const props = Object.entries(oProps).reduce((props, [name, oValue]) => {
             const propDef = schema.get(name);
             const value = !propDef.isAssoc ? oValue : 
