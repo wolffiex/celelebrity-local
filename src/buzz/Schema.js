@@ -1,90 +1,45 @@
 import {getResult} from './Obj.js';
 import {Types, getType} from './Types.js';
 
-function Schema(defOrSchema) {
-    if (defOrSchema instanceof Schema) console.error("FIx this");
-    const schemaDef = defOrSchema;
-    function get(name) {
-        if (! (name in schemaDef)) {
-            throw new Error("Property not found: " + name);
-        }
-        return new PropDef(name, schemaDef[name], schemaDef);
-    }
+export function get(ids, name, snapshot, schemaDef) {
+    const propDef = schemaDef[name];
+    const typeDef = getType(propDef);
 
-    this.get = get
-    this.keys = () => Object.keys(schemaDef);
-    this.debug = () => schemaDef;
-    this.defineConstants = assoc  => {
-        return Object.keys(schemaDef).reduce((props, name) => {
-            const propDef = get(name);
-            if (propDef.type === Types.Constant) {
-                props[name] = assoc(propDef.schemaPropValue.args[0]);
-            }
-            return props;
-        }, {});
-    }
-
-    this.getValue = (id, name, snapshot) => {
-        const propDef = get(name);
-        const schemaPropValue = schemaDef[name];
-        const isAssoc = propDef.isAssoc;
-        const subSchema = propDef.subSchema;
-        if (propDef.type === Types.Constant) {
-            // this creates an index that points back to every node with this schema
-            const getIndex = () => snapshot.index(name, [schemaPropValue.args[0]]);
-            const mapToResult = id2 => getResult(id2, subSchema, snapshot);
-            const result = getIndex().map(mapToResult);
-            result.select = n => snapshot.getRefs(getIndex(), n)
-                .map(id => getResult(id, subSchema.get(n).subSchema, snapshot))
-            return result;
-        } else if (isAssoc) {
-            const toResult = () => snapshot.getRefs([id], name)
-                .map(id2 => getResult(id2, subSchema, snapshot));
-            switch (propDef.type) {
-                case Types.Last:
-                    return first(toResult(), null);
-                case Types.List:
-                    const result = toResult();
-                    result.last = () => first(result, null);
-                    return result;
-                default:
-                    throw new Error('Unexpected');
-            }
-        } else {
-            return first(snapshot.getValues(id, name), schemaPropValue);
-        }
-    }
-}
-
-export function makeSchema(schemaOrDef) {
-    if (schemaOrDef instanceof Schema) return schemaOrDef;
-    else return new Schema(schemaOrDef);
-}
-
-function PropDef(name, schemaPropValue, ssschema) {
-    const type = getType(schemaPropValue);
-    let subSchema = null;
-    switch (type) {
-        case Types.Constant:
-            subSchema = makeSchema(ssschema);
-            break;
-        case Types.Last:
-            subSchema = makeSchema(schemaPropValue.args[0]);
-            break;
+    const values = snapshot.get(ids, name, typeDef === Types.object ? Types.Key : typeDef);
+    switch(typeDef) {
+        case Types.number:
+        case Types.string:
+        case Types.boolean:
+            return first(values, propDef);
         case Types.object:
-            subSchema = makeSchema(schemaPropValue);
-            break;
+            const [id2s, subSchemaDef] = propDef instanceof IndexClass ?
+                [snapshot.index(propDef.name || name, values),  propDef.schemaDef || schemaDef] : 
+                [values, propDef];
+            return Assoc(id2s, subSchemaDef, snapshot)
+        default:
+            //Types.Key is unexpected here
+            throw new Error("Unexpected type error " + propDef);
     }
-
-    this.schemaPropValue = schemaPropValue;
-    this.type = type;
-
-    const isAssoc = !!subSchema
-    this.subSchema = subSchema;
-    this.isAssoc = isAssoc;
 }
 
-function first(it, fallback) {
-    const {value, done} = it.next();
-    return done && (value === undefined) ? fallback : value;
+function Assoc(id2s, schemaDef, snapshot) {
+    const toObj = key => getResult(key, schemaDef, snapshot);
+    id2s.last = function () {
+        const maybeObj = first(id2s, null);
+        return maybeObj === null ? null : toObj(maybeObj)
+    }
+    id2s.select = function (name) {
+        return get(this, name, snapshot, schemaDef);
+    }
+    return id2s;
+}
+
+export function Index() {
+    return new IndexClass();
+}
+
+function IndexClass(name, schemaDef) {
+    this.name = name;
+    this.schemaDef = schemaDef;
+    Object.feeze(this);
 }

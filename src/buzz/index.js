@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
-import {makeSchema} from './Schema.js';
+import {get, Index} from './Schema.js';
 import {getResult} from './Obj.js';
 import {Types, InputType} from './Types.js';
 
