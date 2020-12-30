@@ -40,6 +40,7 @@ test('assoc', () => {
     expect(r.length).toEqual(1);
     expect(r[0].id).toEqual('A');
 
+    //now delete
     valuesCache.write(Key('B'), set => set('a', Key('A', true)));
     snap = valuesCache.getSnapshot(() => {});
     expect([...snap.get(keyIt('B'), 'a')]).toEqual([]);
@@ -51,6 +52,11 @@ test('index', () => {
     valuesCache.write(Key('A'), set => set('name', "aayyy"));
     valuesCache.write(Key('B'), set => set('a', Key('A')));
     valuesCache.write(Key('C'), set => set('a', Key('A')));
-    const snap = valuesCache.getSnapshot(() => {});
+    let snap = valuesCache.getSnapshot(() => {});
     expect([...snap.index('a', keyIt('A'))].map(key=>key.id)).toEqual(['C', 'B']);
+
+    //now delete
+    valuesCache.write(Key('B'), set => set('a', Key('A', true)));
+    snap = valuesCache.getSnapshot(() => {});
+    expect([...snap.index('a', keyIt('A'))].map(key=>key.id)).toEqual(['C']);
 });

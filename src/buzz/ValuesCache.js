@@ -71,11 +71,23 @@ function createValuesCache(sign) {
             index: function (name, key2s) {
                 const id2set = new IdSet(key2s);
                 id2set.forEach(id2 => tracker.indexAccess(name, id2));
+                let seenIds = new Set();
                 return entries()
-                    .filter(entry =>  
-                        name in entry.props && 
-                        isKey(entry.props[name]) &&
-                        id2set.has(entry.props[name].id))
+                    .filter(entry =>  {
+                        if (name in entry.props) {
+                            const value = entry.props[name];
+                            if (isKey(value)) {
+                                const id = entry.key.id;
+                                if (!seenIds.has(id)) {
+                                    seenIds.add(id)
+                                    if (!value.isDelete) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                        return false;
+                    })
                     .map(entry => entry.key)
             },
 

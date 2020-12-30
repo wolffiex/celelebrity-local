@@ -43,7 +43,6 @@ function SubApp(props) {
 }
 
 function GamePlay(props) {
-    console.log('gp', props.game.room)
     return <div>
         <h2>This is game {props.game.room.last().name}</h2>
     </div>;
