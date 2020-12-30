@@ -17,10 +17,10 @@ function SubApp(props) {
     const [player, setPlayer] = useBuzz({name: "", ready: false});
     // new rules: you can only write to objects you created
     const gameSchema = {
-        room: Buzz.last({name:""}), players: player.schema, state: GAME_STATES.Created};
+        room: {name:""}, players: player.schema, state: GAME_STATES.Created};
     const [game, setGame] = useBuzz(gameSchema);
 
-    const chosenRoom = game.room;
+    const chosenRoom = game.room.last();
     props.step(() => {
         if (!player.ready) {
             setPlayer({name: 'k3f', ready: true});

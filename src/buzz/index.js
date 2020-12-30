@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import createValuesCache from './ValuesCache.js';
-import {get, Index} from './Schema.js';
-import {getResult} from './Obj.js';
+import {getResult, Index} from './Obj.js';
 import {Types, getType} from './Types.js';
 import {Key} from './Key.js';
 
@@ -27,23 +26,11 @@ function node() {
     }
 
     function writeEntry(key, schemaDef, oProps) {
-        valuesCache.write(key, ({set, assoc, assocDelete}) => {
-            Object.entries(oProps).forEach(([name, oValue]) => {
-                console.log(name, oValue)
-                const type = getType(oValue);
-                switch (type) { 
-                    case "Key":
-                        assoc(oValue);
-                        break;
-                    case "object":
-                        assoc(writeEntry(newKey(),  oValue));
-                        break;
-                    default:
-                        set(name, oValue);
-                        break;
-                }
-            });
-        });
+        valuesCache.write(key, set => Object.entries(oProps).forEach(([name, value]) => {
+            console.log(name, value)
+            const type = getType(value);
+            set(name, type === Types.object ? writeEntry(newKey(), value) : value);
+        }));
         return key;
     }
 
@@ -64,22 +51,17 @@ function BuzzEnumVariant(enumeration) {
     this.enumeration = enumeration;
 }
 
-function last(schemaDef) {
-    return InputType(Types.Last, schemaDef);
-}
-
 function newKey() {
     return Key(btoa(Math.random()).slice(-8));
 }
-
 
 function constant(id) {
     return Key(id);
 }
 
-function isRef(valueOrRef) {
-    return typeof valueOrRef === "string";
+function index(name, schemaDef) {
+    return Index(name || null, schemaDef || null);
 }
 
-const Buzz = {node, enumerate, last, key: newKey, constant};
+const Buzz = {node, enumerate, index, key: newKey, constant};
 export default Buzz;

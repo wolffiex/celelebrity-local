@@ -35,9 +35,9 @@ function createValuesCache(sign) {
         entry.next = head;
         head = entry;
         for (const [name, value] of Object.entries(entry.props)) {
-            track(entryIdentifier(entry.key, name));
+            track(entryIdentifier(entry.id, name));
             if (isKey(value)) {
-                track(indexIdentifier(name, value));
+                track(indexIdentifier(name, value.id));
             }
         }
         return version;
@@ -57,35 +57,22 @@ function createValuesCache(sign) {
 
         return {
             get: function (keys, name) { 
-                const keySet = new Set(keys.map(k => k.id));
-                keySet.forEach(id => tracker.entryAccess(id, name));
+                const idSet = IdSet(keys);
+                idSet.forEach(id => tracker.entryAccess(id, name));
                 return entries()
-                    .filter(entry =>  ids.has(entry.id) && name in entry.props)
+                    .filter(entry => idSet.has(entry.id) && name in entry.props)
                     .map(entry => entry.props[name]);
-
-                return get(new Set([id]), name)
-                    .reject(value => value instanceof Assoc)
-                return get(ids, name)
-                    .filter(value => value instanceof Assoc && !seen.has(value.key2))
-                    .tap(value => seen.add(value.key2))
-                    .reject(value => value.isDelete)
-                    .pluck('key2')
             },
 
-            //iterate over ids that point to the key2s in key2Iterator with prop[name]
-            index: function (name, key2Iterator) {
-                const key2s = new Set(key2Iterator);
-                key2s.forEach(key2 => tracker.indexAccess(name, key2));
-                let seen = new Set();
+            //iterate over ids that point to any of the key2s with prop[name]
+            index: function (name, key2s) {
+                const id2set = new IdSet(key2s);
+                id2set.forEach(id2 => tracker.indexAccess(name, id2));
                 return entries()
                     .filter(entry =>  
                         name in entry.props && 
-                        entry.props[name] instanceof Assoc &&
-                        key2s.has(entry.props[name].key2) && 
-                        !seen.has(entry.id))
-                    .tap(entry => seen.add(entry.props[name].key2))
-                    .pluck('id')
-                    .unique()
+                        isKey(entry.props[name]) &&
+                        key2s.has(entry.props[name].id));
             },
 
         };
@@ -93,8 +80,10 @@ function createValuesCache(sign) {
 
     return {
         getSnapshot,
-        write: function(key, props) {
-            return appendEntry({id, props});
+        write: function(key, transaction) {
+            let props = {};
+            transaction((name, value) => props[name] = value);
+            return appendEntry({id: key.id, props});
         },
         debug: function() {
             wu.zip(wu(yieldList(head)), wu.count())
@@ -103,10 +92,16 @@ function createValuesCache(sign) {
     };
 }
 
-function Assoc(key2, isDelete) {
-    this.key2 = key2;
-    this.isDelete = isDelete;
-    Object.freeze(this);
+function IdSet(keys) {
+    const keySet = new Set();
+    const seen = new Set();
+    for (const key of keys) {
+        if (!seen.has(key.id)) {
+            seen.add(key.id);
+            if (!key.isDelete) keySet.add(key.id);
+        }
+    }
+    return keySet;
 }
 
 export default createValuesCache;
