@@ -12,13 +12,12 @@ function node() {
         valuesCache.debug();
     }
 
-    function useBuzz(schemaDef, _id) {
+    function useBuzz(schemaDef, _key) {
         //TODO if _id, make sure it is writeable by me
-        const [key, update] = useState(() => _id ? Key(_id) : newKey());
+        const [key, update] = useState(() => _key ? _key : newKey());
         const invalidate = () => update(k => Key(k.id));
 
         const snapshot = valuesCache.getSnapshot(invalidate);
-
         const write = props => writeEntry(key, schemaDef, props);
 
         const result = getResult(key, schemaDef, snapshot);

@@ -19,7 +19,7 @@ function getProp(ids, name, snapshot, schemaDef) {
     const propDef = schemaDef[name];
     const typeDef = getType(propDef);
 
-    const values = snapshot.get(ids, name, typeDef === Types.object ? Types.Key : typeDef);
+    const values = snapshot.get(ids, name);
     switch(typeDef) {
         case Types.number:
         case Types.string:
