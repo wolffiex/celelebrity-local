@@ -26,10 +26,9 @@ function ChooseGame(props) {
     function submitGameChoice(e) {
         e.preventDefault();
         const id = e.target.games.value;
-        props.choose(id);
+        props.choose(Buzz.constant(id));
     }
 
-    console.log('rooma', [...rooms.all])
     const selectGameForm = 
         <form onSubmit={submitGameChoice}>
             <select name="games" disabled={isCreating} value={selected}

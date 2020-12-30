@@ -29,7 +29,6 @@ function getProp(ids, name, snapshot, schemaDef) {
             const [key2s, subSchemaDef] = propDef instanceof IndexClass ?
                 [snapshot.index(propDef.name || name, values),  propDef.schemaDef || schemaDef] : 
                 [values, propDef];
-            console.log('get', name, key2s, subSchemaDef);
             return Assoc(key2s, subSchemaDef, snapshot)
         default:
             //Types.Key is unexpected here
