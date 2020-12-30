@@ -5,7 +5,7 @@ jest.mock('react', () => ({
     useState: initial => [typeof initial == "function" ? initial() : initial, mockSetState]
 }));
 
-test('constant', () => {
+xtest('constant', () => {
     const buzz = Buzz.node();
     const schema = {myList: {name: ''}, all: Buzz.constant("ALL")};
     const [list, setList] = buzz.useBuzz(schema);
@@ -15,7 +15,7 @@ test('constant', () => {
     expect([...list2.all.select('myList').map(x => x.name)]).toEqual(['b', 'a']);
 });
 
-test('props', () => {
+xtest('props', () => {
     const buzz = Buzz.node();
     const schema = {x:0, y:0};
     const [obj1, setObj] = buzz.useBuzz(schema);

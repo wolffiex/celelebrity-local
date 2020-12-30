@@ -1,7 +1,6 @@
 import {isKey} from './Key.js';
 var wu = require("wu");
 
-// FIXME: linked list rather than chunks
 function createValuesCache(sign) {
     let head = null; //list of key, id, values
 
@@ -82,9 +81,10 @@ function createValuesCache(sign) {
     return {
         getSnapshot,
         write: function(key, transaction) {
+            if (!isKey(key)) throw new Error("Expected key for write, got " + key);
+            if (key.isDelete) throw new Error("Don't write to deleted key");
             let props = {};
             transaction((name, value) => props[name] = value);
-            if (key.isDelete) throw new Error("Don't write to deleted key");
             return appendEntry({key, props});
         },
         debug: function() {
@@ -98,6 +98,7 @@ function IdSet(keys) {
     const keySet = new Set();
     const seen = new Set();
     for (const key of keys) {
+        if (!isKey(key)) throw new Error("Expected Key, got " + key);
         if (!seen.has(key.id)) {
             seen.add(key.id);
             if (!key.isDelete) keySet.add(key.id);
