@@ -1,4 +1,4 @@
-import {Key, isKey} from './Key.js';
+import {isKey} from './Key.js';
 var wu = require("wu");
 
 // FIXME: linked list rather than chunks
@@ -35,7 +35,7 @@ function createValuesCache(sign) {
         entry.next = head;
         head = entry;
         for (const [name, value] of Object.entries(entry.props)) {
-            track(entryIdentifier(entry.id, name));
+            track(entryIdentifier(entry.key.id, name));
             if (isKey(value)) {
                 track(indexIdentifier(name, value.id));
             }
@@ -60,7 +60,7 @@ function createValuesCache(sign) {
                 const idSet = IdSet(keys);
                 idSet.forEach(id => tracker.entryAccess(id, name));
                 return entries()
-                    .filter(entry => idSet.has(entry.id) && name in entry.props)
+                    .filter(entry => idSet.has(entry.key.id) && name in entry.props)
                     .map(entry => entry.props[name]);
             },
 
@@ -72,7 +72,8 @@ function createValuesCache(sign) {
                     .filter(entry =>  
                         name in entry.props && 
                         isKey(entry.props[name]) &&
-                        key2s.has(entry.props[name].id));
+                        id2set.has(entry.props[name].id))
+                    .map(entry => entry.key)
             },
 
         };
@@ -83,11 +84,12 @@ function createValuesCache(sign) {
         write: function(key, transaction) {
             let props = {};
             transaction((name, value) => props[name] = value);
-            return appendEntry({id: key.id, props});
+            if (key.isDelete) throw new Error("Don't write to deleted key");
+            return appendEntry({key, props});
         },
         debug: function() {
             wu.zip(wu(yieldList(head)), wu.count())
-                .forEach(([entry, n]) => console.log(n, entry.id, entry.props));
+                .forEach(([entry, n]) => console.log(n, entry.key.id, entry.props));
         },
     };
 }

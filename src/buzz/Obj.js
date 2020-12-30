@@ -29,16 +29,17 @@ function getProp(ids, name, snapshot, schemaDef) {
             const [key2s, subSchemaDef] = propDef instanceof IndexClass ?
                 [snapshot.index(propDef.name || name, values),  propDef.schemaDef || schemaDef] : 
                 [values, propDef];
+            console.log('get', name, key2s, subSchemaDef);
             return Assoc(key2s, subSchemaDef, snapshot)
         default:
             //Types.Key is unexpected here
+            console.error("Type error in getProp", typeDef, propDef)
             throw new Error("Unexpected type error " + propDef);
     }
 }
 
 function Assoc(key2s, schemaDef, snapshot) {
     const seen = new Set();
-    const skip = Symbol();
     const result = key2s
         .reject(key => seen.has(key.id))
         .tap(key => seen.add(key.id))
@@ -55,7 +56,7 @@ export function Index(name, schemaDef) {
 function IndexClass(name, schemaDef) {
     this.name = name;
     this.schemaDef = schemaDef;
-    Object.feeze(this);
+    Object.freeze(this);
 }
 
 function first(it, fallback) {

@@ -25,11 +25,10 @@ function node() {
         return [result, write];
     }
 
-    function writeEntry(key, schemaDef, oProps) {
-        valuesCache.write(key, set => Object.entries(oProps).forEach(([name, value]) => {
-            console.log(name, value)
+    function writeEntry(key, schemaDef, props) {
+        valuesCache.write(key, set => Object.entries(props).forEach(([name, value]) => {
             const type = getType(value);
-            set(name, type === Types.object ? writeEntry(newKey(), value) : value);
+            set(name, type === Types.object ? writeEntry(newKey(), schemaDef[name], value) : value);
         }));
         return key;
     }
