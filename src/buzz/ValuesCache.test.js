@@ -35,10 +35,14 @@ test('assoc', () => {
     const valuesCache = createValuesCache(sign);
     valuesCache.write(Key('A'), set => set('name', "aayyy"));
     valuesCache.write(Key('B'), set => set('a', Key('A')));
-    const snap = valuesCache.getSnapshot(() => {});
+    let snap = valuesCache.getSnapshot(() => {});
     const r = [...snap.get(keyIt('B'), 'a')];
     expect(r.length).toEqual(1);
     expect(r[0].id).toEqual('A');
+
+    valuesCache.write(Key('B'), set => set('a', Key('A', true)));
+    snap = valuesCache.getSnapshot(() => {});
+    expect([...snap.get(keyIt('B'), 'a')]).toEqual([]);
 });
 
 test('index', () => {

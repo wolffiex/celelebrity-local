@@ -58,9 +58,13 @@ function createValuesCache(sign) {
             get: function (keys, name) { 
                 const idSet = IdSet(keys);
                 idSet.forEach(id => tracker.entryAccess(id, name));
+                let seenIds = new Set();
                 return entries()
                     .filter(entry => idSet.has(entry.key.id) && name in entry.props)
-                    .map(entry => entry.props[name]);
+                    .map(entry => entry.props[name])
+                    .reject(value => isKey(value) && seenIds.has(value.id))
+                    .tap(value => isKey(value) && seenIds.add(value.id))
+                    .reject(value => isKey(value) && value.isDelete);
             },
 
             //iterate over ids that point to any of the key2s with prop[name]
