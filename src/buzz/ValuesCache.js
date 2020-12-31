@@ -1,7 +1,9 @@
-import {isKey} from './Key.js';
+import {isKey, Key} from './Key.js';
+import {getType, Types} from './Types.js';
 var wu = require("wu");
 
-function createValuesCache(sign) {
+const KEY_MARKER = "@@BUZZ";
+function createValuesCache(sign, storage) {
     let head = null; //list of key, id, values
 
     let allTrackers = [];
@@ -29,23 +31,63 @@ function createValuesCache(sign) {
     }
 
 
-    function appendEntry(entry) {
-        const version = sign(entry);
-        entry.next = head;
-        head = entry;
-        for (const [name, value] of Object.entries(entry.props)) {
-            track(entryIdentifier(entry.key.id, name));
+    function appendEntry(id, oProps) {
+        const props = {};
+        for (const [name, value] of Object.entries(oProps)) {
+            track(entryIdentifier(id, name));
             if (isKey(value)) {
                 track(indexIdentifier(name, value.id));
             }
+            props[name] = convertKey(value);
         }
+        const next = head;
+        const serialized = JSON.stringify({id, props, next});
+        const version = sign(serialized);
+        head = version;
+        storage.setItem(version, serialized);
         return version;
     }
 
     function* yieldList(ptr) {
         while(ptr) {
-            yield ptr;
-            ptr = ptr.next;
+            const entry = JSON.parse(storage.getItem(ptr));
+            const key = Key(entry.id);
+            const props = Object.fromEntries(Object.entries(entry.props).map(([name, value]) => 
+                [name, restoreKey(value)]));
+            yield {key, props};
+            ptr = entry.next;
+        }
+    }
+
+    function convertKey(value) {
+        switch(getType(value)) {
+            case Types.number:
+            case Types.string:
+            case Types.boolean:
+                return value;
+            case Types.Key:
+                const {id, isDelete} = value;
+                return {[KEY_MARKER]:KEY_MARKER, id, isDelete};
+            case Types.object:
+            default:
+                throw new Error("Bad value for serialize:" + value);
+        }
+    }
+
+    function restoreKey(value) {
+        switch(getType(value)) {
+            case Types.number:
+            case Types.string:
+            case Types.boolean:
+                return value;
+            case Types.object:
+                if (value[KEY_MARKER] === KEY_MARKER) {
+                    return Key(value.id, value.isDelete);
+                }
+                //intentional fall through
+            case Types.Key:
+            default:
+                throw new Error("Unexpected value for hyrdate:" + value);
         }
     }
 
@@ -97,11 +139,10 @@ function createValuesCache(sign) {
     return {
         getSnapshot,
         write: function(key, transaction) {
-            if (!isKey(key)) throw new Error("Expected key for write, got " + key);
-            if (key.isDelete) throw new Error("Don't write to deleted key");
+            if (!isKey(key) || key.isDelete) throw new Error("Bad key:" + key);
             let props = {};
             transaction((name, value) => props[name] = value);
-            return appendEntry({key, props});
+            return appendEntry(key.id, props);
         },
         debug: function() {
             wu.zip(wu(yieldList(head)), wu.count())

@@ -4,13 +4,9 @@ import {getResult, Index} from './Obj.js';
 import {Types, getType} from './Types.js';
 import {Key} from './Key.js';
 
-function node() {
-    const nodeKey = newKey();
-    const valuesCache = new createValuesCache(() => newKey());
-
-    function debug() {
-        valuesCache.debug();
-    }
+function node(storage) {
+    const key = newKey();
+    const valuesCache = new createValuesCache(() => newKey().id, storage);
 
     function useBuzz(schemaDef, _key) {
         //TODO if _id, make sure it is writeable by me
@@ -32,7 +28,7 @@ function node() {
         return key;
     }
 
-    return {useBuzz, debug, toString: () => 'Buzz node ' + nodeKey};
+    return {useBuzz, key, debug: valuesCache.debug(), toString: () => 'Buzz node ' + key.id};
 }
 
 function enumerate(...variants) {

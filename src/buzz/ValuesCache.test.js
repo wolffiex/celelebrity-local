@@ -2,9 +2,11 @@ import {Key} from './Key.js';
 import createValuesCache from './ValuesCache.js';
 
 const keyIt = id => [Key(id)];
+
+let sigNum = 0;
+const sign = () => (sigNum++).toString();
 test('snapshot', () => {
-    const sign = () => 'test';
-    const valuesCache = createValuesCache(sign);
+    const valuesCache = createValuesCache(sign, Storage());
     valuesCache.write(Key('A'), set => {
         set('x', 1);
         set('y', 10);
@@ -31,8 +33,7 @@ test('snapshot', () => {
 });
 
 test('assoc', () => {
-    const sign = () => 'test';
-    const valuesCache = createValuesCache(sign);
+    const valuesCache = createValuesCache(sign, Storage());
     valuesCache.write(Key('A'), set => set('name', "aayyy"));
     valuesCache.write(Key('B'), set => set('a', Key('A')));
     let snap = valuesCache.getSnapshot(() => {});
@@ -47,8 +48,7 @@ test('assoc', () => {
 });
 
 test('index', () => {
-    const sign = () => 'test';
-    const valuesCache = createValuesCache(sign);
+    const valuesCache = createValuesCache(sign, Storage());
     valuesCache.write(Key('A'), set => set('name', "aayyy"));
     valuesCache.write(Key('B'), set => set('a', Key('A')));
     valuesCache.write(Key('C'), set => set('a', Key('A')));
@@ -60,3 +60,17 @@ test('index', () => {
     snap = valuesCache.getSnapshot(() => {});
     expect([...snap.index('a', keyIt('A'))].map(key=>key.id)).toEqual(['C']);
 });
+
+function Storage() {
+    const dict = new Map();
+    function setItem(k, v) {
+        expect(typeof k).toBe("string");
+        expect(typeof v).toBe("string");
+        dict.set(k, v);
+    }
+
+    function getItem(k) {
+        return dict.get(k);
+    }
+    return {setItem, getItem}
+}

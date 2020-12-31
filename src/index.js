@@ -9,7 +9,7 @@ import Buzz from './buzz';
 //const masterKey = params.get('id');
 //if (!masterKey) throw new Error("Missing id.");
 //const key = "password"
-const buzz = Buzz.node();
+const buzz = Buzz.node(localStorage);
 global.buzz = buzz;
 
 ReactDOM.render(
