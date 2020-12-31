@@ -44,6 +44,7 @@ function createValuesCache(sign, storage) {
         const serialized = JSON.stringify({id, props, next});
         const version = sign(serialized);
         head = version;
+        if (storage.getItem(version) !== null) throw new Error("Version exists:" + version);
         storage.setItem(version, serialized);
         return version;
     }

@@ -18,7 +18,7 @@ function Storage() {
     }
 
     function getItem(k) {
-        return dict.get(k);
+        return dict.get(k) || null;
     }
     return {setItem, getItem}
 }
