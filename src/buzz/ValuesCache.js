@@ -3,7 +3,7 @@ import {getType, Types} from './Types.js';
 var wu = require("wu");
 
 const KEY_MARKER = "@@BUZZ";
-function createValuesCache(sign, storage) {
+function createValuesCache(sign, cache) {
     let head = null; //list of key, id, values
 
     let allTrackers = [];
@@ -44,14 +44,14 @@ function createValuesCache(sign, storage) {
         const serialized = JSON.stringify({id, props, next});
         const version = sign(serialized);
         head = version;
-        if (storage.getItem(version) !== null) throw new Error("Version exists:" + version);
-        storage.setItem(version, serialized);
+        if (cache.getItem(version) !== null) throw new Error("Version exists:" + version);
+        cache.setItem(version, serialized);
         return version;
     }
 
     function* yieldList(ptr) {
         while(ptr) {
-            const entry = JSON.parse(storage.getItem(ptr));
+            const entry = JSON.parse(cache.getItem(ptr));
             const key = Key(entry.id);
             const props = Object.fromEntries(Object.entries(entry.props).map(([name, value]) => 
                 [name, restoreKey(value)]));
@@ -144,6 +144,9 @@ function createValuesCache(sign, storage) {
             let props = {};
             transaction((name, value) => props[name] = value);
             return appendEntry(key.id, props);
+        },
+        receive: function(otherNodeId, otherVersion) {
+            //console.log('GOOT', otherNodeId, otherVersion)
         },
         debug: function() {
             wu.zip(wu(yieldList(head)), wu.count())

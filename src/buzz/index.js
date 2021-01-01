@@ -3,13 +3,18 @@ import createValuesCache from './ValuesCache.js';
 import {getResult, Index} from './Obj.js';
 import {Types, getType} from './Types.js';
 import {Key} from './Key.js';
+import Network from './Network.js';
 
-function node(storage) {
+function node(storage, peer) {
     const key = newKey();
     const valuesCache = new createValuesCache(() => newKey().id, storage);
+    const peek = nodeId => storage.getItem(nodeId);
+    const network = Network(peek, valuesCache.receive);
+    if (peer) network.addPeer(peer);
+    setInterval(network.poll, 500);
 
     function useBuzz(schemaDef, _key) {
-        //TODO if _id, make sure it is writeable by me
+        //TODO if _key, make sure it is writeable by me
         const [key, update] = useState(() => _key ? _key : newKey());
         const invalidate = () => update(k => Key(k.id));
 
