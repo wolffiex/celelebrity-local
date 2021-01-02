@@ -1,155 +1,78 @@
-import {isKey, Key} from './Key.js';
-import {getType, Types} from './Types.js';
+import {isKey} from './Key.js';
+import Trackers from './Trackers.js';
 var wu = require("wu");
 
-const KEY_MARKER = "@@BUZZ";
-function createValuesCache(sign, cache) {
-    let head = null; //list of key, id, values
+function createValuesCache(cache) {
+    let trackers = Trackers();
 
-    let allTrackers = [];
-    function SnapshotTracker(invalidate) {
-        let tracker = {access: new Set(), invalidate};
-        allTrackers.push(tracker);
-        return {
-            entryAccess: (id, name) => tracker.access.add(entryIdentifier(id, name)),
-            indexAccess: (name, id) => tracker.access.add(indexIdentifier(name, id)),
-        }
-    }
-    const entryIdentifier = (id, name) => id + "|" + name;
-    const indexIdentifier = (name, refId) => name + "*" + refId;
-
-    function track(identifier) {
-        allTrackers = allTrackers
-            .map(tracker => {
-                if (tracker.access.has(identifier)) {
-                    tracker.invalidate();
-                    return null;
-                } else {
-                    return tracker;
-                }})
-            .filter(tracker => !!tracker);
+    function appendBlock(block) {
+        trackers.notify(block.map(({key, name}) => 
+            trackers.entryIdentifier(key.id, name)).concat(block.filter(({value}) => 
+                isKey(value)).map(({name, value}) => 
+                    trackers.indexIdentifier(name, value.id))));
+        cache.addBlock(block);
     }
 
-
-    function appendEntry(id, oProps) {
-        const props = {};
-        for (const [name, value] of Object.entries(oProps)) {
-            track(entryIdentifier(id, name));
-            if (isKey(value)) {
-                track(indexIdentifier(name, value.id));
+    function* yieldList(head) {
+        for (const block of cache.read(head)) {
+            for (const entry of block) {
+                yield entry;
             }
-            props[name] = convertKey(value);
-        }
-        const next = head;
-        const serialized = JSON.stringify({id, props, next});
-        const version = sign(serialized);
-        head = version;
-        if (cache.getItem(version) !== null) throw new Error("Version exists:" + version);
-        cache.setItem(version, serialized);
-        return version;
-    }
-
-    function* yieldList(ptr) {
-        while(ptr) {
-            const entry = JSON.parse(cache.getItem(ptr));
-            const key = Key(entry.id);
-            const props = Object.fromEntries(Object.entries(entry.props).map(([name, value]) => 
-                [name, restoreKey(value)]));
-            yield {key, props};
-            ptr = entry.next;
-        }
-    }
-
-    function convertKey(value) {
-        switch(getType(value)) {
-            case Types.number:
-            case Types.string:
-            case Types.boolean:
-                return value;
-            case Types.Key:
-                const {id, isDelete} = value;
-                return {[KEY_MARKER]:KEY_MARKER, id, isDelete};
-            case Types.object:
-            default:
-                throw new Error("Bad value for serialize:" + value);
-        }
-    }
-
-    function restoreKey(value) {
-        switch(getType(value)) {
-            case Types.number:
-            case Types.string:
-            case Types.boolean:
-                return value;
-            case Types.object:
-                if (value[KEY_MARKER] === KEY_MARKER) {
-                    return Key(value.id, value.isDelete);
-                }
-                //intentional fall through
-            case Types.Key:
-            default:
-                throw new Error("Unexpected value for hyrdate:" + value);
         }
     }
 
     function getSnapshot(invalidate) {
-        const currentHead = head;
-        const entries = () => wu(yieldList(currentHead));
-        const tracker = SnapshotTracker(invalidate);
+        const head = cache.snapshot();
+        const entries = name => wu(yieldList(head)).filter(entry => entry.name === name);
+        const track = trackers.tracker(invalidate);
 
         return {
             get: function (keys, name) { 
                 const idSet = IdSet(keys);
-                idSet.forEach(id => tracker.entryAccess(id, name));
+                idSet.forEach(id => track(Trackers.entryIdentifier(id, name)));
                 let seenIds = new Set();
-                return entries()
-                    .filter(entry => idSet.has(entry.key.id) && name in entry.props)
-                    .map(entry => entry.props[name])
+                return entries(name)
+                    .filter(entry => idSet.has(entry.key.id))
+                    .map(entry => entry.value)
                     .reject(value => isKey(value) && seenIds.has(value.id))
                     .tap(value => isKey(value) && seenIds.add(value.id))
                     .reject(value => isKey(value) && value.isDelete);
             },
 
-            //iterate over ids that point to any of the key2s with prop[name]
             index: function (name, key2s) {
                 const id2set = new IdSet(key2s);
-                id2set.forEach(id2 => tracker.indexAccess(name, id2));
+                id2set.forEach(id2 => track(Trackers.indexIdentifier(name, id2)));
                 let seenIds = new Set();
-                return entries()
-                    .filter(entry =>  {
-                        if (name in entry.props) {
-                            const value = entry.props[name];
-                            if (isKey(value)) {
-                                const id = entry.key.id;
-                                if (!seenIds.has(id)) {
-                                    seenIds.add(id)
-                                    if (!value.isDelete) {
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
-                        return false;
-                    })
-                    .map(entry => entry.key)
+                return entries(name)
+                    .filter(entry => isKey(entry.value) && !seenIds.has(entry.key.id))
+                    .tap(entry => seenIds.add(entry.key.id))
+                    .reject(entry => entry.value.isDelete)
+                    .map(entry => entry.key);
             },
 
         };
     }
 
+    let block = null;
     return {
         getSnapshot,
         write: function(key, transaction) {
             if (!isKey(key) || key.isDelete) throw new Error("Bad key:" + key);
-            let props = {};
-            transaction((name, value) => props[name] = value);
-            return appendEntry(key.id, props);
+            const isEntryPoint = block === null;
+            if (isEntryPoint) block = [];
+            transaction((name, value) => {
+                block.push({key, name, value});
+            });
+            if (isEntryPoint) {
+                appendBlock(block);
+                block = null;
+            }
         },
         receive: function(otherNodeId, otherVersion) {
             //console.log('GOOT', otherNodeId, otherVersion)
         },
         debug: function() {
-            wu.zip(wu(yieldList(head)), wu.count())
+            wu.zip(wu(yieldList(cache.snapshot())), wu.count())
                 .forEach(([entry, n]) => console.log(n, entry.key.id, entry.props));
         },
     };

@@ -4,10 +4,13 @@ import {getResult, Index} from './Obj.js';
 import {Types, getType} from './Types.js';
 import {Key} from './Key.js';
 import Network from './Network.js';
+import Cache from './Cache.js';
+import BlockCache from './BlockCache.js';
 
 function node(storage, peer) {
     const key = newKey();
-    const valuesCache = new createValuesCache(() => newKey().id, storage);
+    const blockCache = BlockCache(Cache(() => newKey().id, storage));
+    const valuesCache = createValuesCache(blockCache);
     const peek = nodeId => storage.getItem(nodeId);
     const network = Network(peek, valuesCache.receive);
     if (peer) network.addPeer(peer);

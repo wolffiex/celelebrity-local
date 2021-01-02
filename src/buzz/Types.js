@@ -17,3 +17,5 @@ export function getType(value) {
 
     throw new Error("Unrecognized type for " + value);
 }
+
+Types.get = getType;
