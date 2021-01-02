@@ -1,12 +1,23 @@
 import {Key} from './Key.js';
+import BlockCache from './BlockCache.js';
 import createValuesCache from './ValuesCache.js';
 
 const keyIt = id => [Key(id)];
 
-let sigNum = 0;
-const sign = () => (sigNum++).toString();
+function ValuesCache() {
+    let sigNum = 0;
+    const blockMap = new Map();
+    function store(value) {
+        const id = "sig" + sigNum++;
+        blockMap.set(id, value);
+        return id;
+    }
+    const blockCache = BlockCache({store, fetch: id => blockMap.get(id)});
+    return createValuesCache(blockCache);
+}
+
 test('snapshot', () => {
-    const valuesCache = createValuesCache(sign, Storage());
+    const valuesCache = ValuesCache();
     valuesCache.write(Key('A'), set => {
         set('x', 1);
         set('y', 10);
@@ -33,7 +44,7 @@ test('snapshot', () => {
 });
 
 test('assoc', () => {
-    const valuesCache = createValuesCache(sign, Storage());
+    const valuesCache = ValuesCache();
     valuesCache.write(Key('A'), set => set('name', "aayyy"));
     valuesCache.write(Key('B'), set => set('a', Key('A')));
     let snap = valuesCache.getSnapshot(() => {});
@@ -48,7 +59,7 @@ test('assoc', () => {
 });
 
 test('index', () => {
-    const valuesCache = createValuesCache(sign, Storage());
+    const valuesCache = ValuesCache();
     valuesCache.write(Key('A'), set => set('name', "aayyy"));
     valuesCache.write(Key('B'), set => set('a', Key('A')));
     valuesCache.write(Key('C'), set => set('a', Key('A')));
