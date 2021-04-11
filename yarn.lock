@@ -11319,6 +11319,11 @@ ws@^7.2.3:
   resolved "https://registry.yarnpkg.com/ws/-/ws-7.4.0.tgz#a5dd76a24197940d4a8bb9e0e152bb4503764da7"
   integrity sha512-kyFwXuV/5ymf+IXhS6f0+eAFvydbaBW3zjpT6hUdAh/hbVjTIB5EHBGi0bPoCLSK2wcuz3BrEkB9LrYv1Nm4NQ==
 
+wu@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/wu/-/wu-2.1.0.tgz#7e72e3fba23e0ff669ddd537e1c857d3d4b1614f"
+  integrity sha1-fnLj+6I+D/Zp3dU34chX09SxYU8=
+
 xml-name-validator@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/xml-name-validator/-/xml-name-validator-3.0.0.tgz#6ae73e06de4d8c6e47f9fb181f78d648ad457c6a"
